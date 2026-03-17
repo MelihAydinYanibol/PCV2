@@ -546,8 +546,8 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:5000/api';  // Use secondary API for proxying
-        const PRIMARY_API_URL = 'http://127.0.0.1:5005/api';  // Direct access to primary for status
+        const API_URL = 'http://127.0.0.1:5000/api';  // Primary API (update to secondary API URL if using secondary server)
+        const PRIMARY_API_URL = 'http://127.0.0.1:5000/api';  // Direct access to primary for status
         const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         
         // Status caching to reduce API calls

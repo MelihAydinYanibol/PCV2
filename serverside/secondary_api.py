@@ -230,7 +230,8 @@ def check_primary_alive():
     return is_alive
 
 def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
-    """Forward request to primary API."""
+    """Forward request to primary API. Returns (success, response_data, status_code).
+    status_code is None when the primary is unreachable (connection/timeout error)."""
     url = f'{PRIMARY_API_URL}{endpoint}'
     headers = {'Content-Type': 'application/json'}
     
@@ -244,23 +245,23 @@ def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
         elif method == 'DELETE':
             response = requests.delete(url, headers=headers, timeout=REQUEST_TIMEOUT)
         else:
-            return False, {'status': 'error', 'message': 'Unsupported method'}
+            return False, {'status': 'error', 'message': 'Unsupported method'}, 400
         
         # Check if response is successful
         if response.status_code >= 400:
             print(f"[ERROR] Primary API returned {response.status_code}")
-            return False, response.json() if response.text else None
+            return False, response.json() if response.text else None, response.status_code
         
-        return True, response.json()
+        return True, response.json(), response.status_code
     except requests.exceptions.Timeout:
         # Silently fail on timeout - status is cached elsewhere
-        return False, None
+        return False, None, None
     except requests.exceptions.ConnectionError:
         # Silently fail on connection error - status is cached elsewhere
-        return False, None
+        return False, None, None
     except Exception as e:
         print(f"[ERROR] Forward failed: {type(e).__name__}")
-        return False, None
+        return False, None, None
 
 # ============================================================================
 # CORS HEADERS
@@ -292,15 +293,20 @@ def proxy_request(method: str, endpoint: str, data: Dict = None, return_queued: 
     
     if primary_is_alive:
         # Primary is available, try to forward
-        success, response = forward_to_primary(method, endpoint, data)
+        success, response, status_code = forward_to_primary(method, endpoint, data)
         
         if success:
             # Cache successful GET responses
             if method == 'GET':
                 cache_endpoint_data(endpoint, response)
             return jsonify(response), 200
+        
+        # Primary is reachable but returned an error (4xx/5xx) - propagate the error
+        # rather than queuing, since the primary explicitly rejected the request
+        if status_code is not None:
+            return jsonify(response), status_code
     
-    # Primary is down or request failed
+    # Primary is unreachable (connection/timeout error) or marked offline
     if method != 'GET' and return_queued:
         # Queue write operations
         data_json = json.dumps(data) if data else None
@@ -510,7 +516,7 @@ def sync_requests():
             if data_dict:
                 print(f"[SYNC]   Data: {data_dict}")
             
-            success, response = forward_to_primary(method, endpoint, data_dict)
+            success, response, _ = forward_to_primary(method, endpoint, data_dict)
             
             if success:
                 mark_queued_request_done(item_id)
@@ -548,7 +554,7 @@ def refresh_cache():
     
     for endpoint in endpoints_to_cache:
         try:
-            success, response = forward_to_primary('GET', endpoint)
+            success, response, _ = forward_to_primary('GET', endpoint)
             if success:
                 cache_endpoint_data(endpoint, response)
                 print(f"[CACHE] Refreshed {endpoint}")

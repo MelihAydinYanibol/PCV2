@@ -346,6 +346,12 @@ def delete_exception_transaction(date, app_name, index):
         return jsonify({"status": "error", "message": f"Exception not found for {app_name} on {date}"}), 404
     
     exc_list = exceptions[date][app_name]
+
+    # Migrate old format [time, reason] → [[time, reason]] so index-based deletion works correctly
+    if isinstance(exc_list, list) and len(exc_list) == 2 and isinstance(exc_list[0], (int, float)) and not isinstance(exc_list[0], bool):
+        exc_list = [exc_list]
+        exceptions[date][app_name] = exc_list
+
     if not isinstance(exc_list, list) or index < 0 or index >= len(exc_list):
         return jsonify({"status": "error", "message": f"Invalid exception index"}), 400
     
