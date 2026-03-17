@@ -41,6 +41,22 @@ DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturda
 # HELPER FUNCTIONS
 # ============================================================================
 
+def ensure_files_exist() -> None:
+    """Create required JSON files with empty defaults if they do not exist."""
+    defaults = [
+        (LIMIT_FILE, {}),
+        (DATA_FILE, {}),
+        (EXCEPTION_FILE, {}),
+    ]
+    for file_path, default in defaults:
+        if not os.path.exists(file_path):
+            try:
+                with open(file_path, "w") as f:
+                    json.dump(default, f, indent=2)
+            except Exception as e:
+                print(f"Warning: Could not create {file_path}: {e}")
+
+
 def load_limits() -> Dict[str, Any]:
     """Load time limits from file."""
     try:
@@ -532,6 +548,7 @@ def internal_error(error):
 # ============================================================================
 
 if __name__ == "__main__":
+    ensure_files_exist()
     print("Starting Parental Control Configuration API...")
     print("Available endpoints:")
     print("  GET    /api/limits")

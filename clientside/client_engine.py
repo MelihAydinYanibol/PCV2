@@ -26,6 +26,23 @@ SAFETY_SLEEP = 120
 
 USED_EXCEPTIONS=[]
 
+def ensure_files_exist():
+    """Create required JSON files with empty defaults if they do not exist."""
+    defaults = [
+        (LIMIT_FILE, {}),
+        (DATA_FILE, {}),
+        (EXCEPTION_FILE, {}),
+        (USED_EXCEPTIONS_FILE, []),
+    ]
+    for file_path, default in defaults:
+        if not os.path.exists(file_path):
+            try:
+                with open(file_path, "w") as f:
+                    json.dump(default, f, indent=2)
+            except Exception as e:
+                print(f"Warning: Could not create {file_path}: {e}")
+
+
 def load_exceptions():
     try:
         with open(EXCEPTION_FILE, "r") as f:
@@ -205,6 +222,7 @@ def check_exception(name,default_limit,default_usage,today):
 
 def main():
     global USED_EXCEPTIONS
+    ensure_files_exist()
     print(f"Code Started -- Waiting {SAFETY_SLEEP} seconds for security.")
     time.sleep(SAFETY_SLEEP)
     USED_EXCEPTIONS = load_used_exceptions()
