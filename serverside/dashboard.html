@@ -560,11 +560,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             setupTabs();
             setupDateInputs();
-            loadStatus();
             setupForms();
-            loadLimits();
-            loadTodayExceptions();
-            loadConfig();
+            loadDashboardData();
         });
 
         // Setup tab navigation
@@ -672,6 +669,59 @@
             document.getElementById('exceptionsToday').textContent = statusData.exceptions_today ?? '-';
         }
 
+        // Load all dashboard data in a single batch request to reduce network round-trips
+        async function loadDashboardData() {
+            document.getElementById('limitsLoading').classList.add('show');
+            document.getElementById('exceptionsLoading').classList.add('show');
+            document.getElementById('configLoading').classList.add('show');
+
+            let batchSuccess = false;
+            try {
+                const response = await fetch(`${API_URL}/dashboard/data`);
+                const result = await response.json();
+
+                if (result.status === 'success' && result.data) {
+                    const d = result.data;
+
+                    // Update status bar
+                    if (d.status) {
+                        const wrapped = { status: 'success', data: d.status };
+                        STATUS_CACHE.data = wrapped;
+                        STATUS_CACHE.lastFetch = Date.now();
+                        updateStatusUI(wrapped);
+                    }
+
+                    // Render limits table
+                    if ('limits' in d) {
+                        renderLimits(d.limits);
+                    }
+
+                    // Render today's exceptions table
+                    if ('today_exceptions' in d) {
+                        renderTodayExceptions(d.today_exceptions);
+                    }
+
+                    // Populate config view
+                    if ('config' in d) {
+                        document.getElementById('configData').value = JSON.stringify(d.config, null, 2);
+                    }
+
+                    batchSuccess = true;
+                }
+            } catch (error) {
+                console.warn('Batch endpoint failed, falling back to individual requests:', error);
+            } finally {
+                document.getElementById('limitsLoading').classList.remove('show');
+                document.getElementById('exceptionsLoading').classList.remove('show');
+                document.getElementById('configLoading').classList.remove('show');
+            }
+
+            if (!batchSuccess) {
+                // Fallback: fire all requests in parallel
+                await Promise.all([loadStatus(), loadLimits(), loadTodayExceptions(), loadConfig()]);
+            }
+        }
+
         // LIMITS MANAGEMENT
         async function createLimit() {
             const appName = document.getElementById('appNameInput').value;
@@ -713,42 +763,44 @@
             try {
                 const response = await fetch(`${API_URL}/limits`);
                 const data = await response.json();
-                const limits = data.data;
-
-                let html = '';
-                if (Object.keys(limits).length === 0) {
-                    html = '<div class="empty-state"><p>No applications configured yet.</p></div>';
-                } else {
-                    html = '<table><thead><tr><th>Application</th><th>Monday-Friday</th><th>Saturday</th><th>Sunday</th><th>Actions</th></tr></thead><tbody>';
-                    for (const [app, times] of Object.entries(limits)) {
-                        const weekdayTime = times.Monday ? formatSeconds(times.Monday) : '-';
-                        const satTime = times.Saturday ? formatSeconds(times.Saturday) : '-';
-                        const sunTime = times.Sunday ? formatSeconds(times.Sunday) : '-';
-                        html += `
-                            <tr>
-                                <td>${app}</td>
-                                <td>${weekdayTime}</td>
-                                <td>${satTime}</td>
-                                <td>${sunTime}</td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn-success" onclick="quickMakeException('${app}');">⚡ Exception</button>
-                                        <button class="btn-secondary" onclick="editLimit('${app}');">Edit</button>
-                                        <button class="btn-danger" onclick="deleteLimit('${app}');">Delete</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                    html += '</tbody></table>';
-                }
-                document.getElementById('limitsTable').innerHTML = html;
+                renderLimits(data.data);
             } catch (error) {
                 console.error('Error loading limits:', error);
                 document.getElementById('limitsTable').innerHTML = '<p style="color: red;">Error loading limits</p>';
             } finally {
                 document.getElementById('limitsLoading').classList.remove('show');
             }
+        }
+
+        function renderLimits(limits) {
+            let html = '';
+            if (!limits || Object.keys(limits).length === 0) {
+                html = '<div class="empty-state"><p>No applications configured yet.</p></div>';
+            } else {
+                html = '<table><thead><tr><th>Application</th><th>Monday-Friday</th><th>Saturday</th><th>Sunday</th><th>Actions</th></tr></thead><tbody>';
+                for (const [app, times] of Object.entries(limits)) {
+                    const weekdayTime = times.Monday ? formatSeconds(times.Monday) : '-';
+                    const satTime = times.Saturday ? formatSeconds(times.Saturday) : '-';
+                    const sunTime = times.Sunday ? formatSeconds(times.Sunday) : '-';
+                    html += `
+                        <tr>
+                            <td>${app}</td>
+                            <td>${weekdayTime}</td>
+                            <td>${satTime}</td>
+                            <td>${sunTime}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-success" onclick="quickMakeException('${app}');">⚡ Exception</button>
+                                    <button class="btn-secondary" onclick="editLimit('${app}');">Edit</button>
+                                    <button class="btn-danger" onclick="deleteLimit('${app}');">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table>';
+            }
+            document.getElementById('limitsTable').innerHTML = html;
         }
 
         async function deleteLimit(appName) {
@@ -918,72 +970,75 @@
             try {
                 const response = await fetch(`${API_URL}/exceptions/${today}`);
                 const data = await response.json();
-                const exceptions = data.data;
-
-                let html = '';
-                if (Object.keys(exceptions).length === 0) {
-                    html = '<div class="empty-state"><p>No exceptions for today.</p></div>';
-                } else {
-                    html = '<table><thead><tr><th>Application</th><th>Time Adjustment</th><th>Reason</th><th>Actions</th></tr></thead><tbody>';
-                    
-                    // Process each app and its transactions
-                    for (const [app, excList] of Object.entries(exceptions)) {
-                        if (!Array.isArray(excList)) {
-                            console.warn(`Invalid exception format for ${app}:`, excList);
-                            continue;
-                        }
-                        
-                        let totalTime = 0;
-                        
-                        // Display each transaction
-                        for (let i = 0; i < excList.length; i++) {
-                            const transaction = excList[i];
-                            if (!Array.isArray(transaction) || transaction.length < 2) {
-                                console.warn(`Invalid transaction format for ${app}[${i}]:`, transaction);
-                                continue;
-                            }
-                            
-                            const timeValue = transaction[0];
-                            const reason = transaction[1] || '-';
-                            const timeText = formatSeconds(timeValue);
-                            const sign = timeValue >= 0 ? '+' : '';
-                            totalTime += timeValue;
-                            
-                            html += `
-                                <tr>
-                                    <td>${app}</td>
-                                    <td>${sign}${timeText}</td>
-                                    <td>${reason}</td>
-                                    <td>
-                                        <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
-                                    </td>
-                                </tr>
-                            `;
-                        }
-                        
-                        // Display total for this app
-                        const totalText = formatSeconds(totalTime);
-                        const totalSign = totalTime >= 0 ? '+' : '';
-                        html += `
-                            <tr style="background: #f5f5f5; font-weight: bold;">
-                                <td>${app} (Total)</td>
-                                <td>${totalSign}${totalText}</td>
-                                <td colspan="2" style="text-align: center;">
-                                    <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                    
-                    html += '</tbody></table>';
-                }
-                document.getElementById('exceptionsTable').innerHTML = html;
+                renderTodayExceptions(data.data);
             } catch (error) {
                 console.error('Error loading exceptions:', error);
                 document.getElementById('exceptionsTable').innerHTML = '<p style="color: red;">Error loading exceptions</p>';
             } finally {
                 document.getElementById('exceptionsLoading').classList.remove('show');
             }
+        }
+
+        function renderTodayExceptions(exceptions) {
+            const today = new Date().toISOString().split('T')[0];
+            let html = '';
+            if (!exceptions || Object.keys(exceptions).length === 0) {
+                html = '<div class="empty-state"><p>No exceptions for today.</p></div>';
+            } else {
+                html = '<table><thead><tr><th>Application</th><th>Time Adjustment</th><th>Reason</th><th>Actions</th></tr></thead><tbody>';
+                
+                // Process each app and its transactions
+                for (const [app, excList] of Object.entries(exceptions)) {
+                    if (!Array.isArray(excList)) {
+                        console.warn(`Invalid exception format for ${app}:`, excList);
+                        continue;
+                    }
+                    
+                    let totalTime = 0;
+                    
+                    // Display each transaction
+                    for (let i = 0; i < excList.length; i++) {
+                        const transaction = excList[i];
+                        if (!Array.isArray(transaction) || transaction.length < 2) {
+                            console.warn(`Invalid transaction format for ${app}[${i}]:`, transaction);
+                            continue;
+                        }
+                        
+                        const timeValue = transaction[0];
+                        const reason = transaction[1] || '-';
+                        const timeText = formatSeconds(timeValue);
+                        const sign = timeValue >= 0 ? '+' : '';
+                        totalTime += timeValue;
+                        
+                        html += `
+                            <tr>
+                                <td>${app}</td>
+                                <td>${sign}${timeText}</td>
+                                <td>${reason}</td>
+                                <td>
+                                    <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    // Display total for this app
+                    const totalText = formatSeconds(totalTime);
+                    const totalSign = totalTime >= 0 ? '+' : '';
+                    html += `
+                        <tr style="background: #f5f5f5; font-weight: bold;">
+                            <td>${app} (Total)</td>
+                            <td>${totalSign}${totalText}</td>
+                            <td colspan="2" style="text-align: center;">
+                                <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                html += '</tbody></table>';
+            }
+            document.getElementById('exceptionsTable').innerHTML = html;
         }
 
         async function deleteException(date, app) {
@@ -1135,9 +1190,6 @@
             if (secs > 0 || result === '') result += `${secs}s`;
             return result;
         }
-
-        // Auto-load initial data on limits tab
-        setTimeout(() => loadTodayExceptions(), 500);
     </script>
 </body>
 </html>

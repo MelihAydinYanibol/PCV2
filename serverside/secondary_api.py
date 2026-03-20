@@ -15,6 +15,7 @@ from queue import Queue
 from typing import Dict, Any
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
@@ -465,6 +466,57 @@ def get_config():
 def upload_config():
     return proxy_request('POST', '/config', request.get_json(), return_queued=True)
 
+# BATCH ENDPOINT
+@app.route("/api/dashboard/data", methods=["GET"])
+def get_dashboard_data():
+    """Batch endpoint: returns all dashboard data in a single request.
+
+    Fetches limits, status, today's exceptions and full config in parallel
+    from the primary API (or from the local cache when offline) so the
+    browser only needs one round-trip to populate the entire dashboard.
+    """
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    endpoint_map = {
+        'limits': '/limits',
+        'status': '/status',
+        'today_exceptions': f'/exceptions/{today}',
+        'config': '/config',
+    }
+
+    def fetch_one(key, endpoint):
+        """Fetch one endpoint and fall back to cache on failure."""
+        success, response, _ = forward_to_primary('GET', endpoint)
+        if success:
+            cache_endpoint_data(endpoint, response)
+            return key, response.get('data', {}), True
+        cached = get_cached_endpoint_data(endpoint)
+        if cached:
+            return key, cached.get('data', {}), False
+        return key, {}, False
+
+    results = {}
+    any_primary_success = False
+    with ThreadPoolExecutor(max_workers=len(endpoint_map)) as executor:
+        futures = {executor.submit(fetch_one, k, ep): k for k, ep in endpoint_map.items()}
+        for future in as_completed(futures):
+            key, data, succeeded = future.result()
+            results[key] = data
+            if succeeded:
+                any_primary_success = True
+
+    # Update the primary-alive cache based on actual fetch results
+    now = time.time()
+    _primary_status_cache['last_check'] = now
+    _primary_status_cache['is_alive'] = any_primary_success
+
+    results['server'] = {
+        'primary_api': 'online' if any_primary_success else 'offline',
+        'timestamp': datetime.now().isoformat(),
+    }
+
+    return jsonify({"status": "success", "data": results}), 200
+
 # ============================================================================
 # SERVER-SPECIFIC ENDPOINTS
 # ============================================================================
@@ -650,6 +702,7 @@ if __name__ == "__main__":
     
     print("\nServer Endpoints:")
     print("  Proxy: All endpoints from primary API at /api/*")
+    print("  Batch: GET /api/dashboard/data")
     print("  Server Status: GET /api/server/status")
     print("  Queue Status: GET /api/server/queue")
     print("  Manual Sync: POST /api/server/sync")
