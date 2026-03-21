@@ -653,6 +653,7 @@ def refresh_cache():
     # List of endpoints to cache
     endpoints_to_cache = [
         '/limits',
+        '/exceptions',
         f'/exceptions/{today}',
         f'/usage/{today}',
         '/config',
