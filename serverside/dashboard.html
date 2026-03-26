@@ -275,6 +275,38 @@
             border: 1px solid #bee5eb;
         }
 
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+
+        .queued-badge {
+            display: inline-block;
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.82em;
+            font-weight: 600;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
+        .deletion-queued {
+            display: inline-block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.82em;
+            font-weight: 600;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
         .action-buttons {
             display: flex;
             gap: 10px;
@@ -651,6 +683,35 @@
             }, 5000);
         }
 
+        // Returns HTML for a blue "queued" badge
+        function createQueuedBadge() {
+            return `<span class="queued-badge">⏳ Queued</span>`;
+        }
+
+        // Returns HTML for a red "deletion queued" badge
+        function createDeletionQueuedBadge() {
+            return `<span class="deletion-queued">🗑️ Deletion queued</span>`;
+        }
+
+        /**
+         * Fetch pending queue items from the secondary API.
+         * Queue items have the shape:
+         *   { id, method, endpoint, data: { date?, app_name?, exception_time?, reason?, ... } }
+         * Returns an empty array on failure so callers always get an iterable.
+         */
+        async function fetchPendingQueueItems() {
+            try {
+                const response = await fetch(`${API_URL}/server/queue`);
+                const queueData = await response.json();
+                if (queueData.status === 'success' && queueData.data && queueData.data.items) {
+                    return queueData.data.items;
+                }
+            } catch (err) {
+                console.warn('Could not load queue status — queue indicators will not be shown:', err);
+            }
+            return [];
+        }
+
         // Load status (with caching to reduce API calls)
         async function loadStatus() {
             const now = Date.now();
@@ -720,7 +781,8 @@
 
                     // Render today's exceptions table
                     if ('today_exceptions' in d) {
-                        renderTodayExceptions(d.today_exceptions);
+                        const queueItems = await fetchPendingQueueItems();
+                        renderTodayExceptions(d.today_exceptions, queueItems);
                     }
 
                     // Populate config view
@@ -764,7 +826,14 @@
                 });
 
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertLimits', `⏳ ${appName} queued — will be applied when the primary API is back online.`, 'warning');
+                    document.getElementById('limitForm').reset();
+                    DAYS.forEach(day => {
+                        document.querySelector(`.dayHours[data-day="${day}"]`).value = 1;
+                        document.querySelector(`.dayMinutes[data-day="${day}"]`).value = 0;
+                    });
+                } else if (response.ok) {
                     showAlert('alertLimits', `✅ ${appName} added successfully!`, 'success');
                     document.getElementById('limitForm').reset();
                     DAYS.forEach(day => {
@@ -832,7 +901,9 @@
             try {
                 const response = await fetch(`${API_URL}/limits/${appName}`, { method: 'DELETE' });
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertLimits', `⏳ Deletion of ${appName} queued — will be applied when the primary API is back online.`, 'warning');
+                } else if (response.ok) {
                     showAlert('alertLimits', `✅ ${appName} deleted!`, 'success');
                     loadLimits();
                     loadStatus();
@@ -915,7 +986,10 @@
                 });
 
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertLimits', `⏳ ${appName} update queued — will be applied when the primary API is back online.`, 'warning');
+                    closeEditModal();
+                } else if (response.ok) {
                     showAlert('alertLimits', `✅ ${appName} updated successfully!`, 'success');
                     closeEditModal();
                     loadLimits();
@@ -963,7 +1037,15 @@
                 });
 
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertExceptions', `⏳ Exception for ${app} queued — will be applied when the primary API is back online.`, 'warning');
+                    document.getElementById('exceptionForm').reset();
+                    document.getElementById('exceptionDate').value = new Date().toISOString().split('T')[0];
+                    document.getElementById('exceptionAdjustmentType').value = 'add';
+                    document.getElementById('exceptionHours').value = '0';
+                    document.getElementById('exceptionMinutes').value = '0';
+                    loadTodayExceptions();
+                } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception created for ${app}!`, 'success');
                     document.getElementById('exceptionForm').reset();
                     document.getElementById('exceptionDate').value = new Date().toISOString().split('T')[0];
@@ -991,9 +1073,12 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('exceptionsLoading').classList.add('show');
             try {
-                const response = await fetch(`${API_URL}/exceptions/${today}`);
-                const data = await response.json();
-                renderTodayExceptions(data.data);
+                const [exceptionsResponse, queueItems] = await Promise.all([
+                    fetch(`${API_URL}/exceptions/${today}`),
+                    fetchPendingQueueItems()
+                ]);
+                const exceptionsData = await exceptionsResponse.json();
+                renderTodayExceptions(exceptionsData.data, queueItems);
             } catch (error) {
                 console.error('Error loading exceptions:', error);
                 document.getElementById('exceptionsTable').innerHTML = '<p style="color: red;">Error loading exceptions</p>';
@@ -1002,59 +1087,114 @@
             }
         }
 
-        function renderTodayExceptions(exceptions) {
+        function renderTodayExceptions(exceptions, queueItems = []) {
             const today = new Date().toISOString().split('T')[0];
+
+            // Build queue lookup sets for today's exceptions
+            // Queued additions: POST /exceptions with today's date
+            const queuedAdditions = queueItems.filter(item =>
+                item.method === 'POST' &&
+                item.endpoint === '/exceptions' &&
+                item.data && item.data.date === today
+            );
+
+            // Queued deletions: DELETE /exceptions/{today}/... 
+            const queuedDeleteAllApps = new Set();
+            const queuedDeleteTransactions = new Set();
+            for (const item of queueItems) {
+                if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${today}/`)) {
+                    const remainder = item.endpoint.slice(`/exceptions/${today}/`.length);
+                    const slashIdx = remainder.indexOf('/');
+                    if (slashIdx === -1) {
+                        // Delete all for this app
+                        queuedDeleteAllApps.add(decodeURIComponent(remainder));
+                    } else {
+                        // Delete specific transaction
+                        const appName = decodeURIComponent(remainder.slice(0, slashIdx));
+                        const txIndex = remainder.slice(slashIdx + 1);
+                        queuedDeleteTransactions.add(`${appName}/${txIndex}`);
+                    }
+                }
+            }
+
+            const hasExceptions = exceptions && Object.keys(exceptions).length > 0;
+            const hasQueuedAdditions = queuedAdditions.length > 0;
+
             let html = '';
-            if (!exceptions || Object.keys(exceptions).length === 0) {
+            if (!hasExceptions && !hasQueuedAdditions) {
                 html = '<div class="empty-state"><p>No exceptions for today.</p></div>';
             } else {
                 html = '<table><thead><tr><th>Application</th><th>Time Adjustment</th><th>Reason</th><th>Actions</th></tr></thead><tbody>';
                 
-                // Process each app and its transactions
-                for (const [app, excList] of Object.entries(exceptions)) {
-                    if (!Array.isArray(excList)) {
-                        console.warn(`Invalid exception format for ${app}:`, excList);
-                        continue;
-                    }
-                    
-                    let totalTime = 0;
-                    
-                    // Display each transaction
-                    for (let i = 0; i < excList.length; i++) {
-                        const transaction = excList[i];
-                        if (!Array.isArray(transaction) || transaction.length < 2) {
-                            console.warn(`Invalid transaction format for ${app}[${i}]:`, transaction);
+                // Process each app and its transactions from the primary/cache
+                if (hasExceptions) {
+                    for (const [app, excList] of Object.entries(exceptions)) {
+                        if (!Array.isArray(excList)) {
+                            console.warn(`Invalid exception format for ${app}:`, excList);
                             continue;
                         }
                         
-                        const timeValue = transaction[0];
-                        const reason = transaction[1] || '-';
-                        const timeText = formatSeconds(timeValue);
-                        const sign = timeValue >= 0 ? '+' : '';
-                        totalTime += timeValue;
+                        const allDeletedBadge = queuedDeleteAllApps.has(app)
+                            ? createDeletionQueuedBadge() : '';
+                        let totalTime = 0;
                         
+                        // Display each transaction
+                        for (let i = 0; i < excList.length; i++) {
+                            const transaction = excList[i];
+                            if (!Array.isArray(transaction) || transaction.length < 2) {
+                                console.warn(`Invalid transaction format for ${app}[${i}]:`, transaction);
+                                continue;
+                            }
+                            
+                            const timeValue = transaction[0];
+                            const reason = transaction[1] || '-';
+                            const timeText = formatSeconds(timeValue);
+                            const sign = timeValue >= 0 ? '+' : '';
+                            totalTime += timeValue;
+
+                            const txDeletedBadge = queuedDeleteTransactions.has(`${app}/${i}`)
+                                ? createDeletionQueuedBadge() : '';
+                            
+                            html += `
+                                <tr>
+                                    <td>${app}</td>
+                                    <td>${sign}${timeText}${txDeletedBadge}</td>
+                                    <td>${reason}</td>
+                                    <td>
+                                        <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                        
+                        // Display total for this app
+                        const totalText = formatSeconds(totalTime);
+                        const totalSign = totalTime >= 0 ? '+' : '';
                         html += `
-                            <tr>
-                                <td>${app}</td>
-                                <td>${sign}${timeText}</td>
-                                <td>${reason}</td>
-                                <td>
-                                    <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                            <tr style="background: #f5f5f5; font-weight: bold;">
+                                <td>${app} (Total)${allDeletedBadge}</td>
+                                <td>${totalSign}${totalText}</td>
+                                <td colspan="2" style="text-align: center;">
+                                    <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
                                 </td>
                             </tr>
                         `;
                     }
-                    
-                    // Display total for this app
-                    const totalText = formatSeconds(totalTime);
-                    const totalSign = totalTime >= 0 ? '+' : '';
+                }
+
+                // Render queued additions that are not yet in the primary/cache data
+                for (const item of queuedAdditions) {
+                    const app = item.data.app_name || '?';
+                    const timeValue = item.data.exception_time || 0;
+                    const reason = item.data.reason || '-';
+                    const timeText = formatSeconds(timeValue);
+                    const sign = timeValue >= 0 ? '+' : '';
                     html += `
-                        <tr style="background: #f5f5f5; font-weight: bold;">
-                            <td>${app} (Total)</td>
-                            <td>${totalSign}${totalText}</td>
-                            <td colspan="2" style="text-align: center;">
-                                <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
-                            </td>
+                        <tr style="background: #e8f4fd;">
+                        <td>${app} ${createQueuedBadge()}</td>
+                            <td>${sign}${timeText}</td>
+                            <td>${reason}</td>
+                            <td><em style="color:#888; font-size:0.85em;">pending sync</em></td>
                         </tr>
                     `;
                 }
@@ -1070,7 +1210,10 @@
             try {
                 const response = await fetch(`${API_URL}/exceptions/${date}/${app}`, { method: 'DELETE' });
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertExceptions', `⏳ Deletion of all exceptions for ${app} queued — will be applied when the primary API is back online.`, 'warning');
+                    loadTodayExceptions();
+                } else if (response.ok) {
                     showAlert('alertExceptions', `✅ All exceptions deleted!`, 'success');
                     loadTodayExceptions();
                     loadStatus();
@@ -1088,7 +1231,10 @@
             try {
                 const response = await fetch(`${API_URL}/exceptions/${date}/${app}/${index}`, { method: 'DELETE' });
                 const data = await response.json();
-                if (response.ok) {
+                if (response.status === 202) {
+                    showAlert('alertExceptions', `⏳ Exception deletion queued — will be applied when the primary API is back online.`, 'warning');
+                    loadTodayExceptions();
+                } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception deleted!`, 'success');
                     loadTodayExceptions();
                     loadStatus();
