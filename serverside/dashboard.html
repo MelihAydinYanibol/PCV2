@@ -574,13 +574,45 @@
             cacheTTL: 10000  // Cache for 10 seconds
         };
 
+        // Track last known primary status so we can detect transitions
+        let _lastPrimaryStatus = null;
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             setupTabs();
             setupDateInputs();
             setupForms();
             loadDashboardData();
+            // Poll the server every 15 seconds so the offline banner clears
+            // automatically when the primary API comes back online, without
+            // requiring a full page reload.
+            setInterval(pollPrimaryStatus, 15000);
         });
+
+        async function pollPrimaryStatus() {
+            try {
+                const response = await fetch(`${API_URL}/server/status`);
+                if (!response.ok) return;
+                const result = await response.json();
+                const primaryOnline = result.data && result.data.primary_api === 'online';
+
+                if (primaryOnline && _lastPrimaryStatus === false) {
+                    // Primary just recovered — reload all dashboard data so the
+                    // offline banner is cleared and tables show live data.
+                    _lastPrimaryStatus = true;
+                    loadDashboardData();
+                } else if (!primaryOnline && _lastPrimaryStatus === true) {
+                    // Primary just went offline — show the banner immediately.
+                    _lastPrimaryStatus = false;
+                    document.getElementById('offlineBanner').classList.add('show');
+                } else {
+                    // No transition, just keep tracking.
+                    _lastPrimaryStatus = primaryOnline;
+                }
+            } catch (_e) {
+                // Network error reaching the secondary API itself — ignore.
+            }
+        }
 
         // Setup tab navigation
         function setupTabs() {
@@ -704,6 +736,8 @@
                     // Show/hide the offline banner based on primary API status
                     const primaryOffline = d.server && d.server.primary_api === 'offline';
                     document.getElementById('offlineBanner').classList.toggle('show', primaryOffline);
+                    // Keep the poller's state in sync with what the batch endpoint observed.
+                    _lastPrimaryStatus = !primaryOffline;
 
                     // Update status bar
                     if (d.status) {
