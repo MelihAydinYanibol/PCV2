@@ -313,6 +313,10 @@
             flex-wrap: wrap;
         }
 
+        .action-buttons.centered {
+            justify-content: center;
+        }
+
         .action-buttons button {
             padding: 8px 12px;
             font-size: 0.85em;
@@ -712,6 +716,30 @@
             return [];
         }
 
+        /**
+         * Cancel a single pending queue item by its queue ID.
+         * Refreshes the exceptions table on success.
+         */
+        async function cancelQueuedItem(itemId) {
+            if (!confirm('Cancel this queued operation?')) return;
+            try {
+                const response = await fetch(`${API_URL}/server/queue/${itemId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (response.ok) {
+                    showAlert('alertExceptions', '✅ Queued operation cancelled.', 'success');
+                    loadTodayExceptions();
+                } else if (response.status === 409) {
+                    // Item was already processed by the background sync worker
+                    showAlert('alertExceptions', 'ℹ️ Operation was already applied — it cannot be cancelled.', 'info');
+                    loadTodayExceptions();
+                } else {
+                    showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('alertExceptions', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
         // Load status (with caching to reduce API calls)
         async function loadStatus() {
             const now = Date.now();
@@ -1090,7 +1118,7 @@
         function renderTodayExceptions(exceptions, queueItems = []) {
             const today = new Date().toISOString().split('T')[0];
 
-            // Build queue lookup sets for today's exceptions
+            // Build queue lookup structures for today's exceptions
             // Queued additions: POST /exceptions with today's date
             const queuedAdditions = queueItems.filter(item =>
                 item.method === 'POST' &&
@@ -1098,21 +1126,22 @@
                 item.data && item.data.date === today
             );
 
-            // Queued deletions: DELETE /exceptions/{today}/... 
-            const queuedDeleteAllApps = new Set();
-            const queuedDeleteTransactions = new Set();
+            // Queued deletions: DELETE /exceptions/{today}/...
+            // Maps store app/key → queue item ID so we can offer a Cancel button.
+            const queuedDeleteAllApps = new Map();   // app → itemId
+            const queuedDeleteTransactions = new Map(); // "app/index" → itemId
             for (const item of queueItems) {
                 if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${today}/`)) {
                     const remainder = item.endpoint.slice(`/exceptions/${today}/`.length);
                     const slashIdx = remainder.indexOf('/');
                     if (slashIdx === -1) {
                         // Delete all for this app
-                        queuedDeleteAllApps.add(decodeURIComponent(remainder));
+                        queuedDeleteAllApps.set(decodeURIComponent(remainder), item.id);
                     } else {
                         // Delete specific transaction
                         const appName = decodeURIComponent(remainder.slice(0, slashIdx));
                         const txIndex = remainder.slice(slashIdx + 1);
-                        queuedDeleteTransactions.add(`${appName}/${txIndex}`);
+                        queuedDeleteTransactions.set(`${appName}/${txIndex}`, item.id);
                     }
                 }
             }
@@ -1134,7 +1163,8 @@
                             continue;
                         }
                         
-                        const allDeletedBadge = queuedDeleteAllApps.has(app)
+                        const deleteAllQueueId = queuedDeleteAllApps.get(app);
+                        const allDeletedBadge = deleteAllQueueId !== undefined
                             ? createDeletionQueuedBadge() : '';
                         let totalTime = 0;
                         
@@ -1152,8 +1182,11 @@
                             const sign = timeValue >= 0 ? '+' : '';
                             totalTime += timeValue;
 
-                            const txDeletedBadge = queuedDeleteTransactions.has(`${app}/${i}`)
+                            const txQueueId = queuedDeleteTransactions.get(`${app}/${i}`);
+                            const txDeletedBadge = txQueueId !== undefined
                                 ? createDeletionQueuedBadge() : '';
+                            const cancelTxBtn = txQueueId !== undefined
+                                ? `<button class="btn-secondary" onclick="cancelQueuedItem(${txQueueId});">Cancel Deletion</button>` : '';
                             
                             html += `
                                 <tr>
@@ -1161,7 +1194,10 @@
                                     <td>${sign}${timeText}${txDeletedBadge}</td>
                                     <td>${reason}</td>
                                     <td>
-                                        <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                        <div class="action-buttons">
+                                            ${cancelTxBtn}
+                                            <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                        </div>
                                     </td>
                                 </tr>
                             `;
@@ -1170,12 +1206,17 @@
                         // Display total for this app
                         const totalText = formatSeconds(totalTime);
                         const totalSign = totalTime >= 0 ? '+' : '';
+                        const cancelAllBtn = deleteAllQueueId !== undefined
+                            ? `<button class="btn-secondary" onclick="cancelQueuedItem(${deleteAllQueueId});">Cancel Deletion</button>` : '';
                         html += `
                             <tr style="background: #f5f5f5; font-weight: bold;">
                                 <td>${app} (Total)${allDeletedBadge}</td>
                                 <td>${totalSign}${totalText}</td>
                                 <td colspan="2" style="text-align: center;">
-                                    <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
+                                    <div class="action-buttons centered">
+                                        ${cancelAllBtn}
+                                        <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
+                                    </div>
                                 </td>
                             </tr>
                         `;
@@ -1191,10 +1232,12 @@
                     const sign = timeValue >= 0 ? '+' : '';
                     html += `
                         <tr style="background: #e8f4fd;">
-                        <td>${app} ${createQueuedBadge()}</td>
+                            <td>${app} ${createQueuedBadge()}</td>
                             <td>${sign}${timeText}</td>
                             <td>${reason}</td>
-                            <td><em style="color:#888; font-size:0.85em;">pending sync</em></td>
+                            <td>
+                                <button class="btn-secondary" onclick="cancelQueuedItem(${item.id});">Cancel</button>
+                            </td>
                         </tr>
                     `;
                 }

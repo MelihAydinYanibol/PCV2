@@ -592,6 +592,30 @@ def get_server_queue():
         }
     }), 200
 
+@app.route("/api/server/queue/<int:item_id>", methods=["DELETE"])
+def cancel_queue_item(item_id):
+    """Cancel (delete) a single pending queue item by ID."""
+    try:
+        conn = sqlite3.connect(QUEUE_DB, timeout=10)
+        c = conn.cursor()
+        c.execute('SELECT id, method, endpoint FROM request_queue WHERE id = ? AND status = ?', (item_id, 'pending'))
+        row = c.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"status": "error", "message": "Queue item not found or already processed"}), 404
+        c.execute('DELETE FROM request_queue WHERE id = ? AND status = ?', (item_id, 'pending'))
+        deleted = c.rowcount
+        conn.commit()
+        conn.close()
+        if deleted == 0:
+            # Item was processed by the background worker between SELECT and DELETE
+            return jsonify({"status": "error", "message": "Queue item was already processed"}), 409
+        print(f"[QUEUE] Cancelled item {item_id}: {row[1]} {row[2]}")
+        return jsonify({"status": "success", "message": f"Queue item {item_id} cancelled"}), 200
+    except sqlite3.OperationalError as e:
+        print(f"[ERROR] Failed to cancel queue item {item_id}: {e}")
+        return jsonify({"status": "error", "message": "Database error"}), 500
+
 @app.route("/api/server/queue/clear", methods=["POST"])
 def clear_queue():
     """Clear the request queue (dangerous!)."""
