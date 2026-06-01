@@ -525,7 +525,16 @@
                 </div>
 
                 <div class="section">
-                    <h2>Today's Exceptions</h2>
+                    <h2>Exceptions</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="exceptionsViewDate">Select Date</label>
+                            <input type="date" id="exceptionsViewDate">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button type="button" class="btn-secondary" onclick="loadExceptionsForSelectedDate();" aria-label="Load exceptions for selected date">Load Data</button>
+                        </div>
+                    </div>
                     <div id="exceptionsLoading" class="loading">
                         <div class="spinner"></div>
                     </div>
@@ -640,6 +649,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('currentDate').textContent = today;
             document.getElementById('exceptionDate').value = today;
+            document.getElementById('exceptionsViewDate').value = today;
             document.getElementById('usageDate').value = today;
 
             // Create day inputs for limits
@@ -727,11 +737,11 @@
                 const data = await response.json();
                 if (response.ok) {
                     showAlert('alertExceptions', '✅ Queued operation cancelled.', 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.status === 409) {
                     // Item was already processed by the background sync worker
                     showAlert('alertExceptions', 'ℹ️ Operation was already applied — it cannot be cancelled.', 'info');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
                 }
@@ -810,7 +820,11 @@
                     // Render today's exceptions table
                     if ('today_exceptions' in d) {
                         const queueItems = await fetchPendingQueueItems();
-                        renderTodayExceptions(d.today_exceptions, queueItems);
+                        renderExceptions(
+                            d.today_exceptions,
+                            document.getElementById('exceptionsViewDate').value,
+                            queueItems
+                        );
                     }
 
                     // Populate config view
@@ -831,7 +845,7 @@
 
             if (!batchSuccess) {
                 // Fallback: fire all requests in parallel
-                await Promise.all([loadStatus(), loadLimits(), loadTodayExceptions(), loadConfig()]);
+                await Promise.all([loadStatus(), loadLimits(), loadExceptions(), loadConfig()]);
             }
         }
 
@@ -1072,7 +1086,7 @@
                     document.getElementById('exceptionAdjustmentType').value = 'add';
                     document.getElementById('exceptionHours').value = '0';
                     document.getElementById('exceptionMinutes').value = '0';
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception created for ${app}!`, 'success');
                     document.getElementById('exceptionForm').reset();
@@ -1080,7 +1094,7 @@
                     document.getElementById('exceptionAdjustmentType').value = 'add';
                     document.getElementById('exceptionHours').value = '0';
                     document.getElementById('exceptionMinutes').value = '0';
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1097,16 +1111,17 @@
             document.getElementById('exceptionTime').focus();
         }
 
-        async function loadTodayExceptions() {
+        async function loadExceptions(date = null) {
             const today = new Date().toISOString().split('T')[0];
+            const selectedDate = date || document.getElementById('exceptionsViewDate').value || today;
             document.getElementById('exceptionsLoading').classList.add('show');
             try {
                 const [exceptionsResponse, queueItems] = await Promise.all([
-                    fetch(`${API_URL}/exceptions/${today}`),
+                    fetch(`${API_URL}/exceptions/${selectedDate}`),
                     fetchPendingQueueItems()
                 ]);
                 const exceptionsData = await exceptionsResponse.json();
-                renderTodayExceptions(exceptionsData.data, queueItems);
+                renderExceptions(exceptionsData.data, selectedDate, queueItems);
             } catch (error) {
                 console.error('Error loading exceptions:', error);
                 document.getElementById('exceptionsTable').innerHTML = '<p style="color: red;">Error loading exceptions</p>';
@@ -1115,24 +1130,29 @@
             }
         }
 
-        function renderTodayExceptions(exceptions, queueItems = []) {
-            const today = new Date().toISOString().split('T')[0];
+        function loadExceptionsForSelectedDate() {
+            const selectedDate = document.getElementById('exceptionsViewDate').value;
+            loadExceptions(selectedDate);
+        }
 
-            // Build queue lookup structures for today's exceptions
-            // Queued additions: POST /exceptions with today's date
+        function renderExceptions(exceptions, selectedDate, queueItems = []) {
+            const date = selectedDate || new Date().toISOString().split('T')[0];
+
+            // Build queue lookup structures for selected date exceptions
+            // Queued additions: POST /exceptions with selected date
             const queuedAdditions = queueItems.filter(item =>
                 item.method === 'POST' &&
                 item.endpoint === '/exceptions' &&
-                item.data && item.data.date === today
+                item.data && item.data.date === date
             );
 
-            // Queued deletions: DELETE /exceptions/{today}/...
+            // Queued deletions: DELETE /exceptions/{date}/...
             // Maps store app/key → queue item ID so we can offer a Cancel button.
             const queuedDeleteAllApps = new Map();   // app → itemId
             const queuedDeleteTransactions = new Map(); // "app/index" → itemId
             for (const item of queueItems) {
-                if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${today}/`)) {
-                    const remainder = item.endpoint.slice(`/exceptions/${today}/`.length);
+                if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${date}/`)) {
+                    const remainder = item.endpoint.slice(`/exceptions/${date}/`.length);
                     const slashIdx = remainder.indexOf('/');
                     if (slashIdx === -1) {
                         // Delete all for this app
@@ -1151,7 +1171,7 @@
 
             let html = '';
             if (!hasExceptions && !hasQueuedAdditions) {
-                html = '<div class="empty-state"><p>No exceptions for today.</p></div>';
+                html = '<div class="empty-state"><p>No exceptions for this date.</p></div>';
             } else {
                 html = '<table><thead><tr><th>Application</th><th>Time Adjustment</th><th>Reason</th><th>Actions</th></tr></thead><tbody>';
                 
@@ -1196,7 +1216,7 @@
                                     <td>
                                         <div class="action-buttons">
                                             ${cancelTxBtn}
-                                            <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                            <button class="btn-danger" onclick="deleteExceptionTransaction('${date}', '${app}', ${i});">Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1215,7 +1235,7 @@
                                 <td colspan="2" style="text-align: center;">
                                     <div class="action-buttons centered">
                                         ${cancelAllBtn}
-                                        <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
+                                        <button class="btn-danger" onclick="deleteException('${date}', '${app}');">Delete All</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1255,10 +1275,10 @@
                 const data = await response.json();
                 if (response.status === 202) {
                     showAlert('alertExceptions', `⏳ Deletion of all exceptions for ${app} queued — will be applied when the primary API is back online.`, 'warning');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ All exceptions deleted!`, 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1276,10 +1296,10 @@
                 const data = await response.json();
                 if (response.status === 202) {
                     showAlert('alertExceptions', `⏳ Exception deletion queued — will be applied when the primary API is back online.`, 'warning');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception deleted!`, 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1376,7 +1396,7 @@
                         showAlert('alertConfig', '✅ Configuration uploaded successfully!', 'success');
                         loadConfig();
                         loadLimits();
-                        loadTodayExceptions();
+                        loadExceptions();
                         loadStatus();
                     } else {
                         showAlert('alertConfig', `❌ Error: ${data.message}`, 'error');
