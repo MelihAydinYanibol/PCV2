@@ -525,7 +525,16 @@
                 </div>
 
                 <div class="section">
-                    <h2>Today's Exceptions</h2>
+                    <h2>Exceptions</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Select Date</label>
+                            <input type="date" id="exceptionsViewDate" required>
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button type="button" class="btn-secondary" onclick="loadExceptionsForSelectedDate();">Load Data</button>
+                        </div>
+                    </div>
                     <div id="exceptionsLoading" class="loading">
                         <div class="spinner"></div>
                     </div>
@@ -640,6 +649,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('currentDate').textContent = today;
             document.getElementById('exceptionDate').value = today;
+            document.getElementById('exceptionsViewDate').value = today;
             document.getElementById('usageDate').value = today;
 
             // Create day inputs for limits
@@ -1097,16 +1107,17 @@
             document.getElementById('exceptionTime').focus();
         }
 
-        async function loadTodayExceptions() {
+        async function loadTodayExceptions(date = null) {
             const today = new Date().toISOString().split('T')[0];
+            const selectedDate = date || document.getElementById('exceptionsViewDate').value || today;
             document.getElementById('exceptionsLoading').classList.add('show');
             try {
                 const [exceptionsResponse, queueItems] = await Promise.all([
-                    fetch(`${API_URL}/exceptions/${today}`),
+                    fetch(`${API_URL}/exceptions/${selectedDate}`),
                     fetchPendingQueueItems()
                 ]);
                 const exceptionsData = await exceptionsResponse.json();
-                renderTodayExceptions(exceptionsData.data, queueItems);
+                renderTodayExceptions(exceptionsData.data, queueItems, selectedDate);
             } catch (error) {
                 console.error('Error loading exceptions:', error);
                 document.getElementById('exceptionsTable').innerHTML = '<p style="color: red;">Error loading exceptions</p>';
@@ -1115,24 +1126,29 @@
             }
         }
 
-        function renderTodayExceptions(exceptions, queueItems = []) {
-            const today = new Date().toISOString().split('T')[0];
+        function loadExceptionsForSelectedDate() {
+            const selectedDate = document.getElementById('exceptionsViewDate').value;
+            loadTodayExceptions(selectedDate);
+        }
 
-            // Build queue lookup structures for today's exceptions
-            // Queued additions: POST /exceptions with today's date
+        function renderTodayExceptions(exceptions, queueItems = [], selectedDate) {
+            const date = selectedDate || new Date().toISOString().split('T')[0];
+
+            // Build queue lookup structures for selected date exceptions
+            // Queued additions: POST /exceptions with selected date
             const queuedAdditions = queueItems.filter(item =>
                 item.method === 'POST' &&
                 item.endpoint === '/exceptions' &&
-                item.data && item.data.date === today
+                item.data && item.data.date === date
             );
 
-            // Queued deletions: DELETE /exceptions/{today}/...
+            // Queued deletions: DELETE /exceptions/{date}/...
             // Maps store app/key → queue item ID so we can offer a Cancel button.
             const queuedDeleteAllApps = new Map();   // app → itemId
             const queuedDeleteTransactions = new Map(); // "app/index" → itemId
             for (const item of queueItems) {
-                if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${today}/`)) {
-                    const remainder = item.endpoint.slice(`/exceptions/${today}/`.length);
+                if (item.method === 'DELETE' && item.endpoint.startsWith(`/exceptions/${date}/`)) {
+                    const remainder = item.endpoint.slice(`/exceptions/${date}/`.length);
                     const slashIdx = remainder.indexOf('/');
                     if (slashIdx === -1) {
                         // Delete all for this app
@@ -1151,7 +1167,7 @@
 
             let html = '';
             if (!hasExceptions && !hasQueuedAdditions) {
-                html = '<div class="empty-state"><p>No exceptions for today.</p></div>';
+                html = '<div class="empty-state"><p>No exceptions for this date.</p></div>';
             } else {
                 html = '<table><thead><tr><th>Application</th><th>Time Adjustment</th><th>Reason</th><th>Actions</th></tr></thead><tbody>';
                 
@@ -1196,7 +1212,7 @@
                                     <td>
                                         <div class="action-buttons">
                                             ${cancelTxBtn}
-                                            <button class="btn-danger" onclick="deleteExceptionTransaction('${today}', '${app}', ${i});">Delete</button>
+                                            <button class="btn-danger" onclick="deleteExceptionTransaction('${date}', '${app}', ${i});">Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1215,7 +1231,7 @@
                                 <td colspan="2" style="text-align: center;">
                                     <div class="action-buttons centered">
                                         ${cancelAllBtn}
-                                        <button class="btn-danger" onclick="deleteException('${today}', '${app}');">Delete All</button>
+                                        <button class="btn-danger" onclick="deleteException('${date}', '${app}');">Delete All</button>
                                     </div>
                                 </td>
                             </tr>
