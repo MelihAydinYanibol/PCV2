@@ -528,11 +528,11 @@
                     <h2>Exceptions</h2>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Select Date</label>
-                            <input type="date" id="exceptionsViewDate" required>
+                            <label for="exceptionsViewDate">Select Date</label>
+                            <input type="date" id="exceptionsViewDate">
                         </div>
                         <div style="display: flex; align-items: flex-end;">
-                            <button type="button" class="btn-secondary" onclick="loadExceptionsForSelectedDate();">Load Data</button>
+                            <button type="button" class="btn-secondary" onclick="loadExceptionsForSelectedDate();" aria-label="Load exceptions for selected date">Load Data</button>
                         </div>
                     </div>
                     <div id="exceptionsLoading" class="loading">
@@ -737,11 +737,11 @@
                 const data = await response.json();
                 if (response.ok) {
                     showAlert('alertExceptions', '✅ Queued operation cancelled.', 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.status === 409) {
                     // Item was already processed by the background sync worker
                     showAlert('alertExceptions', 'ℹ️ Operation was already applied — it cannot be cancelled.', 'info');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
                 }
@@ -820,7 +820,11 @@
                     // Render today's exceptions table
                     if ('today_exceptions' in d) {
                         const queueItems = await fetchPendingQueueItems();
-                        renderTodayExceptions(d.today_exceptions, queueItems);
+                        renderExceptions(
+                            d.today_exceptions,
+                            document.getElementById('exceptionsViewDate').value,
+                            queueItems
+                        );
                     }
 
                     // Populate config view
@@ -841,7 +845,7 @@
 
             if (!batchSuccess) {
                 // Fallback: fire all requests in parallel
-                await Promise.all([loadStatus(), loadLimits(), loadTodayExceptions(), loadConfig()]);
+                await Promise.all([loadStatus(), loadLimits(), loadExceptions(), loadConfig()]);
             }
         }
 
@@ -1082,7 +1086,7 @@
                     document.getElementById('exceptionAdjustmentType').value = 'add';
                     document.getElementById('exceptionHours').value = '0';
                     document.getElementById('exceptionMinutes').value = '0';
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception created for ${app}!`, 'success');
                     document.getElementById('exceptionForm').reset();
@@ -1090,7 +1094,7 @@
                     document.getElementById('exceptionAdjustmentType').value = 'add';
                     document.getElementById('exceptionHours').value = '0';
                     document.getElementById('exceptionMinutes').value = '0';
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1107,7 +1111,7 @@
             document.getElementById('exceptionTime').focus();
         }
 
-        async function loadTodayExceptions(date = null) {
+        async function loadExceptions(date = null) {
             const today = new Date().toISOString().split('T')[0];
             const selectedDate = date || document.getElementById('exceptionsViewDate').value || today;
             document.getElementById('exceptionsLoading').classList.add('show');
@@ -1117,7 +1121,7 @@
                     fetchPendingQueueItems()
                 ]);
                 const exceptionsData = await exceptionsResponse.json();
-                renderTodayExceptions(exceptionsData.data, queueItems, selectedDate);
+                renderExceptions(exceptionsData.data, selectedDate, queueItems);
             } catch (error) {
                 console.error('Error loading exceptions:', error);
                 document.getElementById('exceptionsTable').innerHTML = '<p style="color: red;">Error loading exceptions</p>';
@@ -1128,10 +1132,10 @@
 
         function loadExceptionsForSelectedDate() {
             const selectedDate = document.getElementById('exceptionsViewDate').value;
-            loadTodayExceptions(selectedDate);
+            loadExceptions(selectedDate);
         }
 
-        function renderTodayExceptions(exceptions, queueItems = [], selectedDate) {
+        function renderExceptions(exceptions, selectedDate, queueItems = []) {
             const date = selectedDate || new Date().toISOString().split('T')[0];
 
             // Build queue lookup structures for selected date exceptions
@@ -1271,10 +1275,10 @@
                 const data = await response.json();
                 if (response.status === 202) {
                     showAlert('alertExceptions', `⏳ Deletion of all exceptions for ${app} queued — will be applied when the primary API is back online.`, 'warning');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ All exceptions deleted!`, 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1292,10 +1296,10 @@
                 const data = await response.json();
                 if (response.status === 202) {
                     showAlert('alertExceptions', `⏳ Exception deletion queued — will be applied when the primary API is back online.`, 'warning');
-                    loadTodayExceptions();
+                    loadExceptions();
                 } else if (response.ok) {
                     showAlert('alertExceptions', `✅ Exception deleted!`, 'success');
-                    loadTodayExceptions();
+                    loadExceptions();
                     loadStatus();
                 } else {
                     showAlert('alertExceptions', `❌ Error: ${data.message}`, 'error');
@@ -1392,7 +1396,7 @@
                         showAlert('alertConfig', '✅ Configuration uploaded successfully!', 'success');
                         loadConfig();
                         loadLimits();
-                        loadTodayExceptions();
+                        loadExceptions();
                         loadStatus();
                     } else {
                         showAlert('alertConfig', `❌ Error: ${data.message}`, 'error');
