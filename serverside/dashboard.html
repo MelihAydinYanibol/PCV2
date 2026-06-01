@@ -1402,7 +1402,8 @@
             if (hours > 0) result += `${hours}h `;
             if (minutes > 0) result += `${minutes}m `;
             if (secs > 0 || result === '') result += `${secs}s`;
-            return isNegative ? `-${result}` : result;
+            const formatted = result.trim();
+            return isNegative ? `-${formatted}` : formatted;
         }
     </script>
 </body>
