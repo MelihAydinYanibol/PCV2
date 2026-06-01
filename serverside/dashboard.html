@@ -1392,15 +1392,17 @@
         // Utility functions
         function formatSeconds(seconds) {
             if (seconds === 0) return '0s';
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
+            const isNegative = seconds < 0;
+            const absSeconds = Math.abs(seconds);
+            const hours = Math.floor(absSeconds / 3600);
+            const minutes = Math.floor((absSeconds % 3600) / 60);
+            const secs = absSeconds % 60;
 
             let result = '';
             if (hours > 0) result += `${hours}h `;
             if (minutes > 0) result += `${minutes}m `;
             if (secs > 0 || result === '') result += `${secs}s`;
-            return result;
+            return isNegative ? `-${result}` : result;
         }
     </script>
 </body>
