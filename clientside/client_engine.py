@@ -88,18 +88,21 @@ def shutdown():
 def trigger_tag_event(tag_id): 
     # We run this in a function to be threaded
     def send_request():
-        url = f"{HASS_URL}/api/events/tag_scanned"
-        headers = {
-            "Authorization": f"Bearer {TOKEN}",
-            "Content-Type": "application/json",
-        }
-        data = {"tag_id": tag_id}
-
         try:
-            requests.post(url, headers=headers, json=data, timeout=2)
-            print("HA Tag Event Triggered.")
+            url = f"{HASS_URL}/api/events/tag_scanned"
+            headers = {
+                "Authorization": f"Bearer {TOKEN}",
+                "Content-Type": "application/json",
+            }
+            data = {"tag_id": tag_id}
+
+            try:
+                requests.post(url, headers=headers, json=data, timeout=2)
+                print("HA Tag Event Triggered.")
+            except Exception as e:
+                print(f"Failed to trigger HA event: {e}")
         except Exception as e:
-            print(f"Failed to trigger HA event: {e}")
+            print(f"Error in trigger_tag_event: {e}")
 
     # Start as a background thread so it doesn't freeze the timer
     threading.Thread(target=send_request).start()
@@ -118,11 +121,14 @@ def notify(limit,usage,name=None):
         if limit - usage < 60: txt = f"{limit-usage} saniye"
         elif (limit - usage) % 60 == 0: txt = f"{(limit-usage)//60} dakika"
         else:txt = f"{(limit - usage) // 60} dakika {(limit - usage) % 60} saniye"
-        toast(
-            "HASSS Agent",
-            f"{whole_txt} {txt}",
-            scenario="urgent"
-        )
+        try:
+            toast(
+                "HASSS Agent",
+                f"{whole_txt} {txt}",
+                scenario="urgent"
+            )
+        except Exception as e:
+            print(f"Failed to send notification: {e}")
         print(f"Sent notification for {name} for remaining {txt}")
 
 def check_exception(name,default_limit,default_usage,today):
@@ -288,4 +294,13 @@ def main():
         save_usage(usage=usage)
 
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt:
+            print("Exiting due to KeyboardInterrupt.")
+            break
+        except Exception as e:
+            print(f"Error in main loop: {e}")
+            time.sleep(2)
+            continue
