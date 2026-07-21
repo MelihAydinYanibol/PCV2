@@ -63,7 +63,12 @@ PRIMARY_API_SESSION = create_session()
 log.setLevel(logging.ERROR) """
 
 # Configuration
-PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api')
+# Normalize the base URL so joins like f'{PRIMARY_API_URL}/status' never produce
+# a double slash. A trailing slash in PRIMARY_API_URL (e.g. 'http://host:5000/api/')
+# would otherwise yield 'http://host:5000/api//status', which Flask treats as a
+# different path and answers with 404 - making the secondary wrongly conclude the
+# primary is offline even though the request reached it.
+PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api').rstrip('/')
 QUEUE_DB = 'request_queue.db'
 SYNC_INTERVAL = 10  # seconds
 REQUEST_TIMEOUT = 4.0  # seconds for data requests
