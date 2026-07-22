@@ -272,7 +272,12 @@ For detailed secondary API documentation, see [serverside/SECONDARY_API_DOCS.md]
   }
 }
 ```
-Times are in seconds. Set to 0 to disable app entirely for that day.
+Times are in seconds. Set to `0` to disable an app entirely for that day
+(0 seconds allowed). Leaving a day **unset** (missing key or `null`) means
+"not configured" — the app/`OVERALL` is treated as effectively unlimited for
+that day (86399s) and is **not** restricted. This applies to `OVERALL` too, so
+an empty `timelimit.json` (`{}`) no longer shuts the computer down; it simply
+enforces nothing until you configure a limit.
 
 ### Usage Tracking Format (timeusage.json)
 ```json
