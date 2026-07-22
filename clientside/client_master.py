@@ -2,11 +2,12 @@ import subprocess
 import sys
 import time
 
-# 1. Start both processes
+# 1. Start all processes
 api_process = subprocess.Popen([sys.executable, 'api.py'])
 main_process = subprocess.Popen([sys.executable, 'client_engine.py'])
+night_lockdown_process = subprocess.Popen([sys.executable, 'night_lockdown.py'])
 
-print("Both processes are running. Press Ctrl+C to stop both.")
+print("All processes are running. Press Ctrl+C to stop them all.")
 
 try:
     # 2. Keep the parent script alive so the children don't get orphaned
@@ -18,6 +19,9 @@ try:
         if main_process.poll() is not None:
             print("Main engine died. Exiting...")
             break
+        if night_lockdown_process.poll() is not None:
+            print("Night lockdown engine died. Exiting...")
+            break
         time.sleep(1)
 
 except KeyboardInterrupt:
@@ -25,4 +29,5 @@ except KeyboardInterrupt:
     print("\nStopping processes...")
     api_process.terminate()
     main_process.terminate()
+    night_lockdown_process.terminate()
     sys.exit()

@@ -8,6 +8,7 @@ exceptionaltime.json
 timelimit.json
 timeusage.json
 used_exceptions.json
+nightlockdown.json
 .env
 .json
 *.db

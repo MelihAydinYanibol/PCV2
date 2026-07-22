@@ -88,6 +88,9 @@ DELETE /api/exceptions/<date>/<app>
 GET    /api/usage
 PUT    /api/usage/<date>/<app>
 
+GET    /api/nightlockdown
+PUT    /api/nightlockdown
+
 GET    /api/config
 POST   /api/config
 ```

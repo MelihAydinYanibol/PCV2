@@ -18,6 +18,11 @@ DATA_FILE = "timeusage.json"
 EXCEPTION_FILE = "exceptionaltime.json"
 USED_EXCEPTIONS_FILE = "used_exceptions.json"
 CHECK_INTERVAL = 5  # seconds
+# When an app (or OVERALL) has no limit configured for the current day — the key
+# is missing or explicitly null — treat it as effectively unlimited for that day
+# so the engine never restricts something the parent didn't set up. An explicit
+# 0 still means "disabled for that day". 86399 = seconds in a day minus one.
+UNCONFIGURED_LIMIT = 24 * 60 * 60 - 1
 load_dotenv()
 HASS_URL = os.getenv("HASS_URL","http://homeassistant.local:8123")
 TOKEN = os.getenv("HASS_TOKEN")
@@ -257,9 +262,13 @@ def main():
         for name,procs in found_processes.items():
             if today not in list(usage):
                 usage[today] = {}
-            # Safely get the configured limit for the name (handles missing entries)
+            # Safely get the configured limit for the name (handles missing entries).
+            # A missing/null value for today means "not configured" -> effectively
+            # unlimited for the day, so unconfigured apps/OVERALL are not restricted.
+            # An explicit 0 is preserved and still means "disabled for that day".
             name_limits = limits.get(name) or {}
-            app_lim = name_limits.get(dow, 0)
+            configured_lim = name_limits.get(dow, None)
+            app_lim = UNCONFIGURED_LIMIT if configured_lim is None else configured_lim
 
             # Always treat missing usage as 0 so exceptions (including OVERALL) apply immediately
             app_usg = usage.get(today, {}).get(name, 0)
