@@ -360,6 +360,58 @@
             }
         }
 
+        .nl-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+
+        .nl-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .nl-subtitle {
+            font-weight: 600;
+            color: #444;
+            margin: 15px 0 8px;
+        }
+
+        .nl-subtitle small {
+            font-weight: 400;
+            color: #999;
+        }
+
+        .nl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nl-row input[type="time"] {
+            width: auto;
+            flex: 0 0 auto;
+        }
+
+        .nl-row .nl-sep {
+            color: #666;
+        }
+
+        .nl-empty {
+            color: #999;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .nl-add-btn {
+            padding: 6px 12px;
+            font-size: 0.85em;
+        }
+
         .loading {
             display: none;
             text-align: center;
@@ -433,6 +485,7 @@
         <div class="nav-tabs">
             <button class="tab-btn active" data-tab="limits">⏱️ Time Limits</button>
             <button class="tab-btn" data-tab="exceptions">✨ Exceptions</button>
+            <button class="tab-btn" data-tab="nightlockdown">🌙 Night Lockdown</button>
             <button class="tab-btn" data-tab="usage">📊 Usage</button>
             <button class="tab-btn" data-tab="config">⚙️ Configuration</button>
         </div>
@@ -539,6 +592,44 @@
                         <div class="spinner"></div>
                     </div>
                     <div id="exceptionsTable" class="table-responsive"></div>
+                </div>
+            </div>
+
+            <!-- NIGHT LOCKDOWN TAB -->
+            <div id="nightlockdown" class="tab-content">
+                <div id="alertNightLockdown" class="alert"></div>
+
+                <div class="section">
+                    <h2>Night Lockdown</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Define <strong>blocked zones</strong> — time windows during which the computer will
+                        automatically shut down if it is turned on. <strong>Whitelisted zones</strong> carve
+                        out allowed periods inside a blocked zone. Time windows may cross midnight
+                        (e.g. 22:00 → 07:00).
+                    </p>
+
+                    <div id="nightLockdownLoading" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="nlEnabled" style="width: auto;" onchange="onNlEnabledChange();">
+                            <span>Enable night lockdown</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="nlPerDay" style="width: auto;" onchange="onNlPerDayChange();">
+                            <span>Use a different schedule for each day of the week</span>
+                        </label>
+                        <small style="color: #999;">When off, the same blocked/whitelisted zones apply to every day.</small>
+                    </div>
+
+                    <div id="nlEditors"></div>
+
+                    <button type="button" class="btn-primary" onclick="saveNightLockdown();" style="margin-top: 20px;">💾 Save Night Lockdown</button>
                 </div>
             </div>
 
@@ -791,6 +882,7 @@
             document.getElementById('limitsLoading').classList.add('show');
             document.getElementById('exceptionsLoading').classList.add('show');
             document.getElementById('configLoading').classList.add('show');
+            document.getElementById('nightLockdownLoading').classList.add('show');
 
             let batchSuccess = false;
             try {
@@ -832,6 +924,11 @@
                         document.getElementById('configData').value = JSON.stringify(d.config, null, 2);
                     }
 
+                    // Populate night lockdown settings
+                    if ('night_lockdown' in d) {
+                        setNightLockdownData(d.night_lockdown);
+                    }
+
                     batchSuccess = true;
                 }
             } catch (error) {
@@ -841,11 +938,12 @@
                 document.getElementById('limitsLoading').classList.remove('show');
                 document.getElementById('exceptionsLoading').classList.remove('show');
                 document.getElementById('configLoading').classList.remove('show');
+                document.getElementById('nightLockdownLoading').classList.remove('show');
             }
 
             if (!batchSuccess) {
                 // Fallback: fire all requests in parallel
-                await Promise.all([loadStatus(), loadLimits(), loadExceptions(), loadConfig()]);
+                await Promise.all([loadStatus(), loadLimits(), loadExceptions(), loadConfig(), loadNightLockdown()]);
             }
         }
 
@@ -1407,6 +1505,180 @@
             };
             reader.readAsText(file);
             document.getElementById('configFile').value = '';
+        }
+
+        // NIGHT LOCKDOWN MANAGEMENT
+        let nightLockdownState = null;
+
+        function defaultNightLockdown() {
+            const days = {};
+            DAYS.forEach(d => { days[d] = { blocked: [], whitelist: [] }; });
+            return { enabled: false, per_day: false, all_days: { blocked: [], whitelist: [] }, days };
+        }
+
+        // Merge server data with defaults so missing keys never break rendering
+        function normalizeNightLockdown(cfg) {
+            const result = defaultNightLockdown();
+            if (cfg && typeof cfg === 'object') {
+                result.enabled = !!cfg.enabled;
+                result.per_day = !!cfg.per_day;
+                if (cfg.all_days && typeof cfg.all_days === 'object') {
+                    result.all_days.blocked = Array.isArray(cfg.all_days.blocked) ? cfg.all_days.blocked : [];
+                    result.all_days.whitelist = Array.isArray(cfg.all_days.whitelist) ? cfg.all_days.whitelist : [];
+                }
+                if (cfg.days && typeof cfg.days === 'object') {
+                    DAYS.forEach(day => {
+                        const dc = cfg.days[day];
+                        if (dc && typeof dc === 'object') {
+                            result.days[day].blocked = Array.isArray(dc.blocked) ? dc.blocked : [];
+                            result.days[day].whitelist = Array.isArray(dc.whitelist) ? dc.whitelist : [];
+                        }
+                    });
+                }
+            }
+            return result;
+        }
+
+        function setNightLockdownData(cfg) {
+            nightLockdownState = normalizeNightLockdown(cfg);
+            renderNightLockdown();
+        }
+
+        async function loadNightLockdown() {
+            document.getElementById('nightLockdownLoading').classList.add('show');
+            try {
+                const response = await fetch(`${API_URL}/nightlockdown`);
+                const data = await response.json();
+                setNightLockdownData(data.data);
+            } catch (error) {
+                console.error('Error loading night lockdown:', error);
+                setNightLockdownData(defaultNightLockdown());
+            } finally {
+                document.getElementById('nightLockdownLoading').classList.remove('show');
+            }
+        }
+
+        function getScheduleByScope(scopeKey) {
+            if (!nightLockdownState) nightLockdownState = defaultNightLockdown();
+            return scopeKey === 'all' ? nightLockdownState.all_days : nightLockdownState.days[scopeKey];
+        }
+
+        function windowRowsHtml(scopeKey, type, windows) {
+            if (!Array.isArray(windows) || windows.length === 0) {
+                return `<div class="nl-empty">No ${type === 'blocked' ? 'blocked' : 'whitelisted'} zones.</div>`;
+            }
+            let html = '';
+            windows.forEach((win, i) => {
+                const start = (Array.isArray(win) && win[0]) ? win[0] : '';
+                const end = (Array.isArray(win) && win[1]) ? win[1] : '';
+                html += `
+                    <div class="nl-row">
+                        <input type="time" value="${start}" onchange="updateWindow('${scopeKey}','${type}',${i},0,this.value);">
+                        <span class="nl-sep">to</span>
+                        <input type="time" value="${end}" onchange="updateWindow('${scopeKey}','${type}',${i},1,this.value);">
+                        <button type="button" class="btn-danger nl-add-btn" onclick="removeWindow('${scopeKey}','${type}',${i});">Remove</button>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        function scheduleEditorHtml(scopeKey, title, schedule) {
+            return `
+                <div class="nl-card">
+                    <h3>${title}</h3>
+                    <div class="nl-subtitle">🚫 Blocked zones <small>(computer shuts down during these times)</small></div>
+                    ${windowRowsHtml(scopeKey, 'blocked', schedule.blocked)}
+                    <button type="button" class="btn-secondary nl-add-btn" onclick="addWindow('${scopeKey}','blocked');">+ Add blocked zone</button>
+                    <div class="nl-subtitle">✅ Whitelisted zones <small>(allowed even inside a blocked zone)</small></div>
+                    ${windowRowsHtml(scopeKey, 'whitelist', schedule.whitelist)}
+                    <button type="button" class="btn-secondary nl-add-btn" onclick="addWindow('${scopeKey}','whitelist');">+ Add whitelist zone</button>
+                </div>
+            `;
+        }
+
+        function renderNightLockdown() {
+            if (!nightLockdownState) nightLockdownState = defaultNightLockdown();
+            document.getElementById('nlEnabled').checked = !!nightLockdownState.enabled;
+            document.getElementById('nlPerDay').checked = !!nightLockdownState.per_day;
+
+            const container = document.getElementById('nlEditors');
+            let html = '';
+            if (nightLockdownState.per_day) {
+                DAYS.forEach(day => {
+                    html += scheduleEditorHtml(day, day, nightLockdownState.days[day]);
+                });
+            } else {
+                html = scheduleEditorHtml('all', 'Every Day', nightLockdownState.all_days);
+            }
+            container.innerHTML = html;
+        }
+
+        function onNlEnabledChange() {
+            if (!nightLockdownState) nightLockdownState = defaultNightLockdown();
+            nightLockdownState.enabled = document.getElementById('nlEnabled').checked;
+        }
+
+        function onNlPerDayChange() {
+            if (!nightLockdownState) nightLockdownState = defaultNightLockdown();
+            nightLockdownState.per_day = document.getElementById('nlPerDay').checked;
+            renderNightLockdown();
+        }
+
+        function addWindow(scopeKey, type) {
+            const schedule = getScheduleByScope(scopeKey);
+            schedule[type].push(['22:00', '07:00']);
+            renderNightLockdown();
+        }
+
+        function removeWindow(scopeKey, type, index) {
+            const schedule = getScheduleByScope(scopeKey);
+            schedule[type].splice(index, 1);
+            renderNightLockdown();
+        }
+
+        function updateWindow(scopeKey, type, index, field, value) {
+            const schedule = getScheduleByScope(scopeKey);
+            if (!Array.isArray(schedule[type][index])) return;
+            schedule[type][index][field] = value;
+        }
+
+        async function saveNightLockdown() {
+            if (!nightLockdownState) nightLockdownState = defaultNightLockdown();
+
+            // Validate: every window must have both a start and end time
+            const scopes = nightLockdownState.per_day
+                ? DAYS.map(d => [d, nightLockdownState.days[d]])
+                : [['Every Day', nightLockdownState.all_days]];
+            for (const [label, schedule] of scopes) {
+                for (const type of ['blocked', 'whitelist']) {
+                    for (const win of schedule[type]) {
+                        if (!win[0] || !win[1]) {
+                            showAlert('alertNightLockdown', `❌ ${label}: every zone needs both a start and end time.`, 'error');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/nightlockdown`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nightLockdownState)
+                });
+                const data = await response.json();
+                if (response.status === 202) {
+                    showAlert('alertNightLockdown', '⏳ Night lockdown queued — will be applied when the primary API is back online.', 'warning');
+                } else if (response.ok) {
+                    showAlert('alertNightLockdown', '✅ Night lockdown settings saved!', 'success');
+                    loadConfig();
+                } else {
+                    showAlert('alertNightLockdown', `❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('alertNightLockdown', `❌ Error: ${error.message}`, 'error');
+            }
         }
 
         // Utility functions

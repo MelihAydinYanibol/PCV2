@@ -32,9 +32,20 @@ def add_cors_headers(response):
 LIMIT_FILE = "timelimit.json"
 DATA_FILE = "timeusage.json"
 EXCEPTION_FILE = "exceptionaltime.json"
+NIGHT_LOCKDOWN_FILE = "nightlockdown.json"
 
 # Days of week mapping
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def default_night_lockdown():
+    """Return a disabled default night-lockdown configuration."""
+    return {
+        "enabled": False,
+        "per_day": False,
+        "all_days": {"blocked": [], "whitelist": []},
+        "days": {day: {"blocked": [], "whitelist": []} for day in DAYS_OF_WEEK},
+    }
 
 
 # ============================================================================
@@ -47,6 +58,7 @@ def ensure_files_exist() -> None:
         (LIMIT_FILE, {}),
         (DATA_FILE, {}),
         (EXCEPTION_FILE, {}),
+        (NIGHT_LOCKDOWN_FILE, default_night_lockdown()),
     ]
     for file_path, default in defaults:
         if not os.path.exists(file_path):
@@ -104,6 +116,82 @@ def save_exceptions(exceptions: Dict[str, Any]) -> bool:
     except Exception as e:
         print(f"Error saving exceptions: {e}")
         return False
+
+
+def load_night_lockdown() -> Dict[str, Any]:
+    """Load night lockdown config from file, merging with defaults."""
+    try:
+        with open(NIGHT_LOCKDOWN_FILE, "r") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default_night_lockdown()
+
+    config = default_night_lockdown()
+    if isinstance(data, dict):
+        config["enabled"] = bool(data.get("enabled", False))
+        config["per_day"] = bool(data.get("per_day", False))
+        if isinstance(data.get("all_days"), dict):
+            config["all_days"]["blocked"] = data["all_days"].get("blocked", []) or []
+            config["all_days"]["whitelist"] = data["all_days"].get("whitelist", []) or []
+        if isinstance(data.get("days"), dict):
+            for day in DAYS_OF_WEEK:
+                day_cfg = data["days"].get(day)
+                if isinstance(day_cfg, dict):
+                    config["days"][day]["blocked"] = day_cfg.get("blocked", []) or []
+                    config["days"][day]["whitelist"] = day_cfg.get("whitelist", []) or []
+    return config
+
+
+def save_night_lockdown(config: Dict[str, Any]) -> bool:
+    """Save night lockdown config to file."""
+    try:
+        with open(NIGHT_LOCKDOWN_FILE, "w") as f:
+            json.dump(config, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving night lockdown config: {e}")
+        return False
+
+
+def _valid_time_string(value: Any) -> bool:
+    """Return True if value is a valid 'HH:MM' 24-hour time string."""
+    try:
+        hours, minutes = str(value).split(":")
+        hours, minutes = int(hours), int(minutes)
+        return 0 <= hours <= 23 and 0 <= minutes <= 59
+    except Exception:
+        return False
+
+
+def _normalize_windows(windows: Any) -> Tuple[bool, Any]:
+    """Validate and normalize a list of [start, end] time windows.
+
+    Returns (is_valid, normalized_list_or_error_message).
+    """
+    if not isinstance(windows, list):
+        return False, "Time windows must be a list"
+    normalized = []
+    for window in windows:
+        if not isinstance(window, (list, tuple)) or len(window) != 2:
+            return False, "Each window must be a [start, end] pair"
+        start, end = window[0], window[1]
+        if not _valid_time_string(start) or not _valid_time_string(end):
+            return False, f"Invalid time value in window {window}. Use HH:MM (24h)"
+        normalized.append([start, end])
+    return True, normalized
+
+
+def _normalize_schedule(schedule: Any) -> Tuple[bool, Any]:
+    """Validate a {'blocked': [...], 'whitelist': [...]} schedule object."""
+    if not isinstance(schedule, dict):
+        return False, "Schedule must be an object with 'blocked' and 'whitelist'"
+    result = {}
+    for key in ("blocked", "whitelist"):
+        ok, value = _normalize_windows(schedule.get(key, []))
+        if not ok:
+            return False, value
+        result[key] = value
+    return True, result
 
 
 # ============================================================================
@@ -388,6 +476,65 @@ def delete_exception_transaction(date, app_name, index):
 
 
 # ============================================================================
+# NIGHT LOCKDOWN ENDPOINTS
+# ============================================================================
+
+@app.route("/api/nightlockdown", methods=["GET"])
+def get_night_lockdown():
+    """Get the full night lockdown configuration."""
+    config = load_night_lockdown()
+    return jsonify({"status": "success", "data": config}), 200
+
+
+@app.route("/api/nightlockdown", methods=["PUT"])
+def update_night_lockdown():
+    """
+    Replace the full night lockdown configuration.
+
+    Body:
+    {
+        "enabled": true,
+        "per_day": false,
+        "all_days": {
+            "blocked":   [["22:00", "07:00"]],
+            "whitelist": [["23:00", "23:30"]]
+        },
+        "days": {
+            "Monday": {"blocked": [], "whitelist": []},
+            ...
+        }
+    }
+    """
+    data = request.get_json()
+
+    if not data or not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    config = default_night_lockdown()
+    config["enabled"] = bool(data.get("enabled", False))
+    config["per_day"] = bool(data.get("per_day", False))
+
+    # Validate the shared (all-days) schedule
+    ok, all_days = _normalize_schedule(data.get("all_days", {"blocked": [], "whitelist": []}))
+    if not ok:
+        return jsonify({"status": "error", "message": f"all_days: {all_days}"}), 400
+    config["all_days"] = all_days
+
+    # Validate each per-day schedule
+    days_in = data.get("days", {}) or {}
+    for day in DAYS_OF_WEEK:
+        ok, day_schedule = _normalize_schedule(days_in.get(day, {"blocked": [], "whitelist": []}))
+        if not ok:
+            return jsonify({"status": "error", "message": f"{day}: {day_schedule}"}), 400
+        config["days"][day] = day_schedule
+
+    if save_night_lockdown(config):
+        return jsonify({"status": "success", "message": "Night lockdown configuration updated", "data": config}), 200
+    else:
+        return jsonify({"status": "error", "message": "Failed to save night lockdown configuration"}), 500
+
+
+# ============================================================================
 # USAGE ENDPOINTS
 # ============================================================================
 
@@ -483,15 +630,17 @@ def get_status():
 
 @app.route("/api/config", methods=["GET"])
 def get_config():
-    """Get full configuration (limits and exceptions)."""
+    """Get full configuration (limits, exceptions and night lockdown)."""
     limits = load_limits()
     exceptions = load_exceptions()
-    
+    night_lockdown = load_night_lockdown()
+
     return jsonify({
         "status": "success",
         "data": {
             "limits": limits,
-            "exceptions": exceptions
+            "exceptions": exceptions,
+            "night_lockdown": night_lockdown
         }
     }), 200
 
@@ -514,14 +663,18 @@ def upload_config():
     
     limits_saved = True
     exceptions_saved = True
-    
+    night_lockdown_saved = True
+
     if "limits" in data:
         limits_saved = save_limits(data["limits"])
-    
+
     if "exceptions" in data:
         exceptions_saved = save_exceptions(data["exceptions"])
-    
-    if limits_saved and exceptions_saved:
+
+    if "night_lockdown" in data:
+        night_lockdown_saved = save_night_lockdown(data["night_lockdown"])
+
+    if limits_saved and exceptions_saved and night_lockdown_saved:
         return jsonify({"status": "success", "message": "Configuration uploaded successfully"}), 200
     else:
         return jsonify({"status": "error", "message": "Failed to save configuration"}), 500
@@ -562,6 +715,8 @@ if __name__ == "__main__":
     print("  GET    /api/exceptions/<date>/<app_name>")
     print("  POST   /api/exceptions")
     print("  DELETE /api/exceptions/<date>/<app_name>")
+    print("  GET    /api/nightlockdown")
+    print("  PUT    /api/nightlockdown")
     print("  GET    /api/usage")
     print("  GET    /api/usage/<date>")
     print("  GET    /api/usage/<date>/<app_name>")

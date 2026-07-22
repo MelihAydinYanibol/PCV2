@@ -10,6 +10,7 @@ A comprehensive Windows-based parental control system that monitors application 
 - 🛡️ **Exception Management** - Grant temporary exceptions to bypass time limits for specific dates
 - 🔔 **Smart Notifications** - Toast notifications at configurable intervals (30s, 60s, 2m, 5m before limit reached)
 - 🎯 **Selective Monitoring** - Choose which applications to monitor and control
+- 🌙 **Night Lockdown** - Automatically shut the computer down during parent-defined blocked time zones, with optional whitelisted exceptions, configurable the same for every day or per day of the week
 
 ### Architecture
 - 🌐 **Distributed System** - Client-side engine with server-side dashboard integration
@@ -24,11 +25,14 @@ A comprehensive Windows-based parental control system that monitors application 
 ParentalControlsV2/
 ├── clientside/              # Local monitoring and API server
 │   ├── client_engine.py     # Main application monitor and enforcer
+│   ├── night_lockdown.py    # Night lockdown enforcer (shuts down in blocked zones)
+│   ├── client_master.py     # Launches api, engine and night lockdown together
 │   ├── api.py               # Configuration REST API (PORT 5000)
 │   ├── requirements.txt      # Python dependencies
 │   ├── timelimit.json        # Application time limits (per day)
 │   ├── timeusage.json        # Current usage statistics
 │   ├── exceptionaltime.json  # Exception dates/apps
+│   ├── nightlockdown.json    # Night lockdown blocked/whitelisted zones
 │   └── used_exceptions.json  # Tracking of used exceptions
 │
 ├── serverside/              # Central dashboard and proxy
@@ -100,6 +104,16 @@ cd clientside
 env\Scripts\activate
 python client_engine.py
 ```
+
+#### Step 2b: Start the Night Lockdown Engine
+In a new terminal:
+```bash
+cd clientside
+env\Scripts\activate
+python night_lockdown.py
+```
+> Tip: `python client_master.py` launches the API, the monitoring engine and the
+> night lockdown engine together in a single command.
 
 #### Step 3: Start Serverside Proxy Server (Optional but Recommended)
 In another terminal:
@@ -179,6 +193,32 @@ POST /api/exceptions
 DELETE /api/exceptions/{date}/{app_name}
 ```
 
+#### Night Lockdown
+```bash
+# Get night lockdown configuration
+GET /api/nightlockdown
+
+# Replace night lockdown configuration
+PUT /api/nightlockdown
+{
+  "enabled": true,
+  "per_day": false,
+  "all_days": {
+    "blocked":   [["22:00", "07:00"]],
+    "whitelist": [["23:00", "23:30"]]
+  },
+  "days": {
+    "Monday":  { "blocked": [], "whitelist": [] },
+    ...
+  }
+}
+```
+When `per_day` is `false`, the `all_days` schedule applies to every day. When
+`true`, the matching entry in `days` is used for the current weekday. If the
+current time falls inside a **blocked** window and not inside a **whitelisted**
+window, the computer is shut down. Time windows may cross midnight
+(e.g. `["22:00", "07:00"]`).
+
 #### Configuration
 ```bash
 # Get config
@@ -244,6 +284,31 @@ Times are in seconds. Set to 0 to disable app entirely for that day.
   }
 }
 ```
+
+### Night Lockdown Format (nightlockdown.json)
+```json
+{
+  "enabled": true,
+  "per_day": false,
+  "all_days": {
+    "blocked":   [["22:00", "07:00"]],
+    "whitelist": [["23:00", "23:30"]]
+  },
+  "days": {
+    "Monday":    { "blocked": [["21:00", "07:00"]], "whitelist": [] },
+    "Tuesday":   { "blocked": [], "whitelist": [] },
+    "Wednesday": { "blocked": [], "whitelist": [] },
+    "Thursday":  { "blocked": [], "whitelist": [] },
+    "Friday":    { "blocked": [], "whitelist": [] },
+    "Saturday":  { "blocked": [], "whitelist": [] },
+    "Sunday":    { "blocked": [], "whitelist": [] }
+  }
+}
+```
+Each window is a `["HH:MM", "HH:MM"]` (24-hour) pair and may wrap past midnight.
+The night lockdown engine performs a 3-minute security sleep on startup before
+it begins enforcing, and re-reads this file on every check so dashboard changes
+take effect without a restart.
 
 ### Exceptions Format (exceptionaltime.json)
 ```json

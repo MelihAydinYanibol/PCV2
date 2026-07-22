@@ -465,6 +465,15 @@ def delete_exception_transaction_proxy(date, app_name, index):
     """Proxy delete for a specific exception transaction (queues when primary offline)."""
     return proxy_request('DELETE', f'/exceptions/{date}/{app_name}/{index}', return_queued=True)
 
+# NIGHT LOCKDOWN ENDPOINTS
+@app.route("/api/nightlockdown", methods=["GET"])
+def get_night_lockdown():
+    return proxy_request('GET', '/nightlockdown')
+
+@app.route("/api/nightlockdown", methods=["PUT"])
+def update_night_lockdown():
+    return proxy_request('PUT', '/nightlockdown', request.get_json(), return_queued=True)
+
 # USAGE ENDPOINTS
 @app.route("/api/usage", methods=["GET"])
 def get_usage():
@@ -511,6 +520,7 @@ def get_dashboard_data():
         'status': '/status',
         'today_exceptions': f'/exceptions/{today}',
         'config': '/config',
+        'night_lockdown': '/nightlockdown',
     }
 
     def fetch_one(key, endpoint):
@@ -712,7 +722,8 @@ def refresh_cache():
         f'/exceptions/{today}',
         f'/usage/{today}',
         '/config',
-        '/status'
+        '/status',
+        '/nightlockdown'
     ]
     
     for endpoint in endpoints_to_cache:

@@ -162,7 +162,49 @@ curl -X DELETE http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
 
 ---
 
-### 3. USAGE TRACKING
+### 3. NIGHT LOCKDOWN
+
+#### Get night lockdown configuration
+```bash
+curl http://localhost:5000/api/nightlockdown
+```
+
+#### Same schedule for every day
+```bash
+curl -X PUT http://localhost:5000/api/nightlockdown \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true,
+    "per_day": false,
+    "all_days": {
+      "blocked":   [["22:00", "07:00"]],
+      "whitelist": [["23:00", "23:30"]]
+    }
+  }'
+```
+
+#### Different schedule per day of the week
+```bash
+curl -X PUT http://localhost:5000/api/nightlockdown \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true,
+    "per_day": true,
+    "days": {
+      "Friday":   {"blocked": [["23:59", "08:00"]], "whitelist": []},
+      "Saturday": {"blocked": [["23:59", "09:00"]], "whitelist": []},
+      "Sunday":   {"blocked": [["21:00", "07:00"]], "whitelist": []}
+    }
+  }'
+```
+
+Windows are `["HH:MM", "HH:MM"]` (24-hour) and may cross midnight. When the
+current time is inside a **blocked** window and not inside a **whitelisted**
+window, the computer is shut down.
+
+---
+
+### 4. USAGE TRACKING
 
 #### Get all usage data
 ```bash
@@ -208,7 +250,7 @@ curl -X PUT http://localhost:5000/api/usage/2026-01-17/chrome.exe \
 
 ---
 
-### 4. STATUS & CONFIGURATION
+### 5. STATUS & CONFIGURATION
 
 #### Get current system status
 ```bash
