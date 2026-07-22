@@ -700,7 +700,14 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:5035/api';  // Secondary API
+        // Talk to the secondary API on the same host the dashboard was loaded from,
+        // so it works when opened locally AND from another device on the LAN
+        // (e.g. a phone at http://192.168.x.x:8000). Falls back to 127.0.0.1 when
+        // the page is opened directly from disk (file://, empty hostname).
+        // Override by setting ?api=http://host:port/api in the URL if needed.
+        const API_HOST = window.location.hostname || '127.0.0.1';
+        const API_URL = new URLSearchParams(window.location.search).get('api')
+            || `http://${API_HOST}:5035/api`;  // Secondary API
         const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         
         // Status caching to reduce API calls
