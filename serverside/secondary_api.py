@@ -63,7 +63,10 @@ PRIMARY_API_SESSION = create_session()
 log.setLevel(logging.ERROR) """
 
 # Configuration
-PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api')
+# Strip any trailing slash so endpoint concatenation (PRIMARY_API_URL + '/status')
+# never produces a double slash like '.../api//status', which the primary would
+# reject with a 404.
+PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api').rstrip('/')
 QUEUE_DB = 'request_queue.db'
 SYNC_INTERVAL = 10  # seconds
 REQUEST_TIMEOUT = 4.0  # seconds for data requests
@@ -262,30 +265,39 @@ def check_primary_alive():
     if current_time - _primary_status_cache['last_check'] < _primary_status_cache['cache_ttl']:
         return _primary_status_cache['is_alive']
     
-    # Try the well-known status endpoint first
+    # A liveness probe only needs to confirm the primary API process is
+    # reachable and answering HTTP. ANY HTTP response -- including a 404 or
+    # other 4xx/5xx -- proves the server is up: the connection succeeded and
+    # Flask replied. Only connection errors or timeouts mean it is actually
+    # offline.
+    #
+    # (Previously only an HTTP 200 counted as alive, so if the probe URL
+    # resolved to a valid-but-unmapped path -- e.g. PRIMARY_API_URL missing the
+    # '/api' prefix, or a stray trailing slash producing '/api//status' -- a
+    # perfectly healthy primary would return 404 and be wrongly declared
+    # offline.)
     is_alive = False
     probe_urls = [f'{PRIMARY_API_URL}/status', PRIMARY_API_URL]
-    last_exception = None
     for url in probe_urls:
         try:
             response = PRIMARY_API_SESSION.get(url, timeout=PROBE_TIMEOUT)
-            # Consider alive if we get an HTTP 200
-            if response.status_code == 200:
-                is_alive = True
-                break
-            else:
-                # Log non-200 for diagnosis
-                print(f"[CHECK] Probe to {url} returned status {response.status_code}")
+            is_alive = True
+            if response.status_code != 200:
+                # Reachable but the probe path wasn't a 200 -- surface it so a
+                # misconfigured PRIMARY_API_URL is easy to spot, but still treat
+                # the primary as online since it clearly responded.
+                print(f"[CHECK] Probe to {url} returned status "
+                      f"{response.status_code} - primary is reachable, treating as ONLINE")
+            break
         except requests.exceptions.RequestException as e:
-            last_exception = e
-            # Keep trying other probe urls
-            # Only verbose-print when debugging
+            # Connection refused / timeout / DNS failure -> genuinely unreachable.
+            # Keep trying the remaining probe urls before giving up.
             print(f"[CHECK] Probe to {url} failed: {type(e).__name__}: {e}")
             continue
-    
+
     # Update cache
     _update_primary_status(is_alive)
-    
+
     return is_alive
 
 def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
