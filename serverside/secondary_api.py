@@ -262,9 +262,16 @@ def check_primary_alive():
     if current_time - _primary_status_cache['last_check'] < _primary_status_cache['cache_ttl']:
         return _primary_status_cache['is_alive']
     
-    # Try the well-known status endpoint first
+    # Probe the well-known status endpoint. Note: PRIMARY_API_URL on its own
+    # (e.g. "http://localhost:5000/api") is NOT a valid fallback here - the
+    # primary API has no route registered at that bare path, only under
+    # /api/<resource>, so hitting it always 404s. A prior version of this
+    # function used it as a second probe, which meant any transient hiccup
+    # on the /status probe (a slow response past PROBE_TIMEOUT, for example)
+    # fell through to a probe that could never succeed, and the primary got
+    # marked offline even though it was actually up and responding fine.
     is_alive = False
-    probe_urls = [f'{PRIMARY_API_URL}/status', PRIMARY_API_URL]
+    probe_urls = [f'{PRIMARY_API_URL}/status']
     last_exception = None
     for url in probe_urls:
         try:
