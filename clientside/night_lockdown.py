@@ -40,13 +40,17 @@ import time
 from datetime import datetime
 
 try:
-    from win11toast import toast
-except Exception:  # pragma: no cover - toast is optional / Windows-only
-    toast = None
+    from notifier import safe_toast
+except Exception as _notifier_error:  # notifications must never stop the lockdown
+    print(f"Notifier unavailable, continuing without toasts: {_notifier_error}")
+
+    def safe_toast(*args, **kwargs):
+        return False
 
 NIGHT_LOCKDOWN_FILE = "nightlockdown.json"
 CHECK_INTERVAL = 15  # seconds between checks
 SAFETY_SLEEP = 180   # 3 minutes security sleep when the module opens
+NOTIFY_TIMEOUT = 2   # max seconds to wait for the shutdown toast
 
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 ISO_DAY_MAP = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday",
@@ -171,17 +175,18 @@ def is_locked_down(config, now=None):
 
 
 def notify_shutdown():
-    """Best-effort toast warning the user before the computer shuts down."""
-    if toast is None:
-        return
-    try:
-        toast(
-            "HASSS Agent",
-            "Gece kilidi aktif. Bilgisayar kapatılıyor.",
-            scenario="urgent",
-        )
-    except Exception as e:
-        print(f"Failed to send night lockdown notification: {e}")
+    """Best-effort toast warning the user before the computer shuts down.
+
+    Waits a couple of seconds so the toast has a chance to reach Windows
+    before the shutdown command is issued, but never longer than that - the
+    shutdown must happen whether or not the notification works.
+    """
+    safe_toast(
+        "HASSS Agent",
+        "Gece kilidi aktif. Bilgisayar kapatılıyor.",
+        wait=NOTIFY_TIMEOUT,
+        scenario="urgent",
+    )
 
 
 def shutdown():
