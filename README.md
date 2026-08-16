@@ -8,7 +8,7 @@ A comprehensive Windows-based parental control system that monitors application 
 - ⏱️ **Time Limit Enforcement** - Set daily usage limits per application with per-day granularity
 - 📊 **Usage Tracking** - Real-time monitoring of application usage with comprehensive statistics
 - 🛡️ **Exception Management** - Grant temporary exceptions to bypass time limits for specific dates
-- 🔔 **Smart Notifications** - Toast notifications at configurable intervals (30s, 60s, 2m, 5m before limit reached)
+- 🔔 **Smart Notifications** - Toast notifications at configurable intervals (30s, 60s, 2m, 5m before limit reached), fully optional: if the toast backend is missing, broken or hangs, monitoring and enforcement keep running
 - 🎯 **Selective Monitoring** - Choose which applications to monitor and control
 - 🌙 **Night Lockdown** - Automatically shut the computer down during parent-defined blocked time zones, with optional whitelisted exceptions, configurable the same for every day or per day of the week
 
@@ -368,6 +368,21 @@ Modify notification times in `client_engine.py`:
 USAGE_NOTIFIERS = [30, 60, 120, 300]  # seconds before limit
 ```
 
+All toasts go through `notifier.safe_toast()` in `clientside/notifier.py`, which
+never raises and never blocks the monitoring loop:
+
+- If `win11toast` is not installed or cannot be imported (e.g. non-Windows), the
+  engines log a single warning and run without notifications.
+- Each toast is dispatched on a daemon thread, so a hanging Windows notification
+  stack cannot freeze time tracking or enforcement.
+- After 5 consecutive failures notifications are disabled for the rest of the
+  run instead of being retried on every check (`MAX_CONSECUTIVE_FAILURES`).
+
+```python
+MAX_CONSECUTIVE_FAILURES = 5  # failures before toasts are given up on
+MAX_OUTSTANDING = 3           # pending toasts before the backend is deemed stuck
+```
+
 ## 🐛 Troubleshooting
 
 ### Primary API Not Starting
@@ -397,7 +412,7 @@ USAGE_NOTIFIERS = [30, 60, 120, 300]  # seconds before limit
 - Flask 3.1.3 - Web framework for REST API
 - psutil 7.2.1 - System and process utilities
 - requests 2.32.5 - HTTP library
-- win10toast 0.9 - Windows toast notifications
+- win11toast 0.36.3 - Windows toast notifications (optional; the engines run without it)
 - pywin32 311 - Windows API access
 - python-dotenv 1.2.1 - Environment variable management
 

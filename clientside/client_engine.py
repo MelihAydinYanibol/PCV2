@@ -2,11 +2,18 @@ import json
 import time
 import psutil
 from datetime import datetime
-from win11toast import toast
 import threading
 import requests
 import os
 from dotenv import load_dotenv
+
+try:
+    from notifier import safe_toast
+except Exception as _notifier_error:  # notifications must never stop the engine
+    print(f"Notifier unavailable, continuing without toasts: {_notifier_error}")
+
+    def safe_toast(*args, **kwargs):
+        return False
 
 USAGE_NOTIFIERS = [30,60,120,300] # seconds
 TTS_EVENTS = {30:"cc5f5e65-8d04-48bb-947f-243d9184e6cc",
@@ -126,14 +133,11 @@ def notify(limit,usage,name=None):
         if limit - usage < 60: txt = f"{limit-usage} saniye"
         elif (limit - usage) % 60 == 0: txt = f"{(limit-usage)//60} dakika"
         else:txt = f"{(limit - usage) // 60} dakika {(limit - usage) % 60} saniye"
-        try:
-            toast(
-                "HASSS Agent",
-                f"{whole_txt} {txt}",
-                scenario="urgent"
-            )
-        except Exception as e:
-            print(f"Failed to send notification: {e}")
+        safe_toast(
+            "HASSS Agent",
+            f"{whole_txt} {txt}",
+            scenario="urgent"
+        )
         print(f"Sent notification for {name} for remaining {txt}")
 
 def check_exception(name,default_limit,default_usage,today):
@@ -173,8 +177,7 @@ def check_exception(name,default_limit,default_usage,today):
                             t_txt = f"{t//60} dakika {t%60} saniye"
                         else:
                             t_txt = f"{t} saniye"
-                        """ toaster = ToastNotifier() """
-                        toast(
+                        safe_toast(
                             "HASSS Agent",
                             f"{txt_name} {t_txt} eklendi.",
                             scenario="urgent"
@@ -187,8 +190,7 @@ def check_exception(name,default_limit,default_usage,today):
                             t_txt = f"{abs(t)//60} dakika {abs(t)%60} saniye"
                         else:
                             t_txt = f"{abs(t)} saniye"
-                        """ toaster = ToastNotifier() """
-                        toast(
+                        safe_toast(
                             "HASSS Agent",
                             f"{txt_name} {t_txt} azaltıldı.",
                             scenario="urgent"
@@ -214,8 +216,7 @@ def check_exception(name,default_limit,default_usage,today):
                         t_txt = f"{t_int//60} dakika {t_int%60} saniye"
                     else:
                         t_txt = f"{t_int} saniye"
-                    """ toaster = ToastNotifier() """
-                    toast(
+                    safe_toast(
                         "HASSS Agent",
                         f"{txt_name} süre {t_txt} yapıldı.",
                         scenario="urgent"
