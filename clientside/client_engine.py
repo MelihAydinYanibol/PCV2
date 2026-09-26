@@ -15,6 +15,9 @@ except Exception as _notifier_error:  # notifications must never stop the engine
     def safe_toast(*args, **kwargs):
         return False
 
+from shutdown_guard import (install_shutdown_survival, force_shutdown,
+                            clear_shutdown_enforced, shutdown_recently_enforced)
+
 USAGE_NOTIFIERS = [30,60,120,300] # seconds
 TTS_EVENTS = {30:"cc5f5e65-8d04-48bb-947f-243d9184e6cc",
               60:"704097ff-8ac4-4b4b-8384-3fbfb7d70638",
@@ -34,6 +37,12 @@ load_dotenv()
 HASS_URL = os.getenv("HASS_URL","http://homeassistant.local:8123")
 TOKEN = os.getenv("HASS_TOKEN")
 SAFETY_SLEEP = 120
+# Shorter startup sleep when this engine already shut the computer down for
+# the overall limit recently (e.g. the shutdown was cancelled and the engine
+# restarted, or the computer was turned back on). Enforcement still checks the
+# limit and exceptions first, so this never shuts down by itself.
+RESUME_SAFETY_SLEEP = 20
+SHUTDOWN_SOURCE = "time_limit"
 
 
 USED_EXCEPTIONS=[]
@@ -93,9 +102,8 @@ def save_usage(usage):
         f.close()
 
 def shutdown():
-    import os
     print("Time exceeded for overall usage. Shutting down the computer.")
-    os.system('shutdown /s /t 0 /F') 
+    force_shutdown(SHUTDOWN_SOURCE)
 
 def trigger_tag_event(tag_id): 
     # We run this in a function to be threaded
@@ -235,8 +243,11 @@ def check_exception(name,default_limit,default_usage,today):
 def main():
     global USED_EXCEPTIONS
     ensure_files_exist()
-    print(f"Code Started -- Waiting {SAFETY_SLEEP} seconds for security.")
-    time.sleep(SAFETY_SLEEP)
+    safety_sleep = SAFETY_SLEEP
+    if shutdown_recently_enforced(SHUTDOWN_SOURCE):
+        safety_sleep = RESUME_SAFETY_SLEEP
+    print(f"Code Started -- Waiting {safety_sleep} seconds for security.")
+    time.sleep(safety_sleep)
     USED_EXCEPTIONS = load_used_exceptions()
     print("Starting monitor\n")
     while True:
@@ -290,9 +301,13 @@ def main():
                         if proc.info['name'] not in killed:
                             killed.append(proc.info['name'])
                 else:
+                    # Keeps firing every check while over the limit, so a
+                    # cancelled shutdown is simply issued again.
                     shutdown()
                     break
             else:
+                if name == "OVERALL":
+                    clear_shutdown_enforced(SHUTDOWN_SOURCE)
                 print(f"Time checked for : {name}. Usage : {app_usg}/{app_lim}")
                 notify(app_lim, app_usg, name)
         print("Sleeping for 5 seconds.")
@@ -304,6 +319,7 @@ def main():
         save_usage(usage=usage)
 
 if __name__ == "__main__":
+    install_shutdown_survival("client_engine")
     while True:
         try:
             main()

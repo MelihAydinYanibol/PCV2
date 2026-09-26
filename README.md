@@ -401,6 +401,25 @@ MAX_OUTSTANDING = 3           # pending toasts before the backend is deemed stuc
 - Verify times are in seconds
 - Check application names match exactly (e.g., `chrome.exe` not `Chrome`)
 
+### Shutdown Cancelled ("These apps are preventing shutdown")
+When the overall limit or night lockdown shuts the PC down, pressing **Cancel**
+on the Windows "apps are preventing shutdown" screen no longer turns the
+engines off:
+- The engines (and `client_master.py`) hold on to Windows' close/shutdown
+  console events instead of exiting, keep running, and issue the shutdown
+  again on their next check (every 5s for time limits, 15s for night lockdown).
+- `client_master.py` restarts any process that stops instead of exiting.
+- After an enforced shutdown the engines remember it in `shutdown_pending.json`;
+  when they restart (or the PC is turned back on) within 12 hours, the startup
+  safety sleep drops to 20 seconds. The limit/schedule and any exceptions are
+  still checked first, so granting an exception always lets the PC stay on.
+  The marker clears itself once the limit/schedule allows use again.
+- Legitimate shutdowns may take a few extra seconds while Windows ends the
+  engines.
+- For the strongest setup, start `client_master.py` from a Windows Scheduled
+  Task (at logon, "restart on failure") so it comes back even if the whole
+  console is killed.
+
 ### Web Dashboard Not Updating
 - Verify correct API URL configured in `dashboard.html`
 - Check browser console for CORS or network errors
