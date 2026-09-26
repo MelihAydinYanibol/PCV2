@@ -47,9 +47,16 @@ except Exception as _notifier_error:  # notifications must never stop the lockdo
     def safe_toast(*args, **kwargs):
         return False
 
+from shutdown_guard import (install_shutdown_survival, force_shutdown,
+                            clear_shutdown_enforced, shutdown_recently_enforced)
+
 NIGHT_LOCKDOWN_FILE = "nightlockdown.json"
 CHECK_INTERVAL = 15  # seconds between checks
 SAFETY_SLEEP = 180   # 3 minutes security sleep when the module opens
+# Shorter startup sleep when night lockdown recently shut the computer down
+# (cancelled shutdown + restart, or turned back on inside a blocked zone).
+RESUME_SAFETY_SLEEP = 20
+SHUTDOWN_SOURCE = "night_lockdown"
 NOTIFY_TIMEOUT = 2   # max seconds to wait for the shutdown toast
 
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -193,22 +200,26 @@ def shutdown():
     """Force an immediate shutdown of the computer."""
     print("Night lockdown active. Shutting down the computer.")
     notify_shutdown()
-    os.system("shutdown /s /t 0 /F")
+    force_shutdown(SHUTDOWN_SOURCE)
 
 
 def main():
     ensure_files_exist()
-    print(f"Night Lockdown started -- Waiting {SAFETY_SLEEP} seconds for security.")
-    time.sleep(SAFETY_SLEEP)
+    safety_sleep = SAFETY_SLEEP
+    if shutdown_recently_enforced(SHUTDOWN_SOURCE):
+        safety_sleep = RESUME_SAFETY_SLEEP
+    print(f"Night Lockdown started -- Waiting {safety_sleep} seconds for security.")
+    time.sleep(safety_sleep)
     print("Night Lockdown monitoring started.\n")
 
     while True:
         config = load_config()
         if is_locked_down(config):
+            # Keeps firing every check while locked down, so a cancelled
+            # shutdown is simply issued again.
             shutdown()
-            # Give the shutdown command time to take effect before looping again
-            time.sleep(CHECK_INTERVAL)
         else:
+            clear_shutdown_enforced(SHUTDOWN_SOURCE)
             if config.get("enabled"):
                 print(f"Night lockdown check passed at {datetime.now().strftime('%H:%M:%S')}")
             else:
@@ -217,6 +228,7 @@ def main():
 
 
 if __name__ == "__main__":
+    install_shutdown_survival("night_lockdown")
     while True:
         try:
             main()
