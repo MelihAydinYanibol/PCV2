@@ -21,7 +21,8 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Load environment variables from .env if present
+# Load environment variables from .env if present (serverside/.env first, then cwd)
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 load_dotenv()
 
 # Enable gzip compression
@@ -339,24 +340,11 @@ def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
         return False, None, None
 
 # ============================================================================
-# CORS HEADERS
+# CORS
 # ============================================================================
-
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "ok"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-        return response, 200
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
-    return response
+# No CORS headers on purpose: the dashboard is served from this server (same
+# origin) and requests need a sign-in cookie, so other websites must not be
+# able to call this API from a visitor's browser. See auth.py.
 
 # ============================================================================
 # PROXY ENDPOINTS - These mirror the primary API
@@ -813,13 +801,17 @@ if __name__ == "__main__":
     
     # Initialize database
     init_db()
+
+    # Password sign-in for the dashboard and API (password from serverside/.env)
+    from auth import init_auth
+    init_auth(app, QUEUE_DB)
     
     # Start background sync worker
     worker_thread = threading.Thread(target=background_sync_worker, daemon=True)
     worker_thread.start()
     
     print("\nServer Endpoints:")
-    print("  Dashboard: GET /")
+    print("  Dashboard: GET /  (sign in at /login)")
     print("  Proxy: All endpoints from primary API at /api/*")
     print("  Batch: GET /api/dashboard/data")
     print("  Server Status: GET /api/server/status")

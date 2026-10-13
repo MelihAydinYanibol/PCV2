@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>Sign in · Parental Controls</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234f5bd5'/%3E%3Cpath d='M32 12l16 7v11c0 10-7 18-16 22-9-4-16-12-16-22V19l16-7z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+(function () {
+    var m = document.cookie.match(/(?:^|;\s*)pcv2_theme=(light|dark)/);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+})();
+</script>
+<style>
+:root {
+    --bg: #f4f5f8; --surface: #ffffff; --surface-2: #f8f9fb; --border: #e3e6ec;
+    --text: #1b1f29; --text-2: #5b6272; --text-3: #8a91a1;
+    --accent: #4f5bd5; --accent-soft: #eceefd; --accent-text: #ffffff;
+    --danger: #d64545; --danger-soft: #fdeaea;
+    --shadow: 0 1px 2px rgba(20, 24, 40, .06), 0 12px 40px rgba(20, 24, 40, .10);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #0f1117; --surface: #171a22; --surface-2: #1d212b; --border: #2a2f3b;
+        --text: #e8eaf0; --text-2: #a5abba; --text-3: #747b8c;
+        --accent: #7c86f0; --accent-soft: #252a4a; --accent-text: #0f1117;
+        --danger: #f07070; --danger-soft: #3d1c1e;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 40px rgba(0, 0, 0, .4);
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #0f1117; --surface: #171a22; --surface-2: #1d212b; --border: #2a2f3b;
+    --text: #e8eaf0; --text-2: #a5abba; --text-3: #747b8c;
+    --accent: #7c86f0; --accent-soft: #252a4a; --accent-text: #0f1117;
+    --danger: #f07070; --danger-soft: #3d1c1e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 40px rgba(0, 0, 0, .4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; min-height: 100dvh;
+    display: grid; place-items: center;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.card {
+    width: 100%; max-width: 380px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: var(--shadow); padding: 30px 26px 26px;
+}
+.mark { width: 52px; height: 52px; border-radius: 15px; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; margin-bottom: 18px; }
+.mark svg { width: 28px; height: 28px; }
+h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.01em; }
+p.sub { color: var(--text-2); font-size: .92rem; margin-top: 4px; margin-bottom: 22px; }
+label { display: block; font-size: .82rem; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.pw { position: relative; }
+input[type="password"], input[type="text"].pw-input {
+    width: 100%; font: inherit; font-size: 16px; color: var(--text);
+    padding: 12px 46px 12px 14px; min-height: 48px;
+    border: 1px solid var(--border); border-radius: 11px; background: var(--surface);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 36px; height: 36px; border: 0; border-radius: 9px; background: none; cursor: pointer;
+    color: var(--text-3); display: grid; place-items: center;
+}
+.toggle:hover { color: var(--text); background: var(--surface-2); }
+.toggle svg { width: 20px; height: 20px; }
+.toggle .off { display: none; }
+.toggle.on .on { display: none; }
+.toggle.on .off { display: block; }
+button[type="submit"] {
+    width: 100%; margin-top: 18px; min-height: 48px;
+    font: inherit; font-weight: 650; font-size: 1rem;
+    border: 0; border-radius: 11px; cursor: pointer;
+    background: var(--accent); color: var(--accent-text);
+    transition: filter .15s, transform .05s;
+}
+button[type="submit"]:hover { filter: brightness(1.06); }
+button[type="submit"]:active { transform: translateY(1px); }
+button[type="submit"]:disabled { opacity: .6; cursor: wait; }
+.error { display: none; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: .88rem; font-weight: 550; }
+.error.show { display: block; }
+.caps { display: none; color: var(--text-3); font-size: .8rem; margin-top: 6px; }
+.caps.show { display: block; }
+.foot { color: var(--text-3); font-size: .78rem; text-align: center; margin-top: 18px; }
+/* Visually hidden but still read by password managers */
+.vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+</style>
+</head>
+<body>
+<main class="card">
+    <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><rect x="9" y="10.5" width="6" height="5" rx="1"/><path d="M10.5 10.5V9a1.5 1.5 0 0 1 3 0v1.5"/></svg>
+    </div>
+    <h1>Parental Controls</h1>
+    <p class="sub">Enter the dashboard password to continue.</p>
+
+    <div class="error {{ERROR_CLASS}}" role="alert">{{ERROR}}</div>
+
+    <!-- A real form POST + redirect so browsers (e.g. Google Password Manager) offer to save the password -->
+    <form id="loginForm" method="post" autocomplete="on">
+        <input class="vh" type="text" id="username" name="username" value="Parent" autocomplete="username" tabindex="-1" aria-hidden="true" readonly>
+        <label for="password">Password</label>
+        <div class="pw">
+            <input type="password" id="password" name="password" autocomplete="current-password" required autofocus maxlength="1024" spellcheck="false" autocapitalize="off" autocorrect="off">
+            <button type="button" class="toggle" id="toggle" aria-label="Show password" title="Show password">
+                <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M1 1l22 22"/></svg>
+            </button>
+        </div>
+        <div class="caps" id="caps">Caps Lock is on</div>
+        <button type="submit" id="submit">Sign in</button>
+    </form>
+    <p class="foot">Your browser can save this password for next time.</p>
+</main>
+<script>
+(function () {
+    var pw = document.getElementById('password');
+    var toggle = document.getElementById('toggle');
+    var form = document.getElementById('loginForm');
+    toggle.addEventListener('click', function () {
+        var show = pw.type === 'password';
+        pw.type = show ? 'text' : 'password';
+        toggle.classList.toggle('on', show);
+        toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        toggle.title = show ? 'Hide password' : 'Show password';
+        pw.focus();
+    });
+    // Always submit as a password field so password managers recognise it
+    form.addEventListener('submit', function () {
+        pw.type = 'password';
+        document.getElementById('submit').disabled = true;
+    });
+    pw.addEventListener('keyup', function (e) {
+        if (e.getModifierState) document.getElementById('caps').classList.toggle('show', e.getModifierState('CapsLock'));
+    });
+    if (document.querySelector('.error.show')) pw.select();
+})();
+</script>
+</body>
+</html>
