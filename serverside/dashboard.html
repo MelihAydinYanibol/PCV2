@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1117" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Parental Controls">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234f5bd5'/%3E%3Cpath d='M32 12l16 7v11c0 10-7 18-16 22-9-4-16-12-16-22V19l16-7z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%234f5bd5'/%3E%3Cpath d='M32 12l16 7v11c0 10-7 18-16 22-9-4-16-12-16-22V19l16-7z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E">
 <meta name="color-scheme" content="light dark">
 <title>Parental Controls</title>
 <style>
@@ -91,6 +99,8 @@ body {
     min-height: 100vh;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
+button, a, label, [data-action], [data-quick], [data-tab] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.m-only, .m-inline { display: none !important; }
 .num { font-variant-numeric: tabular-nums; }
 
 /* ---------- Layout ---------- */
@@ -104,8 +114,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar-inner {
     max-width: 1180px; margin: 0 auto;
     padding: 12px 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
     display: flex; align-items: center; gap: 12px;
 }
+.topbar { padding-top: env(safe-area-inset-top); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 1.05rem; white-space: nowrap; }
 .brand-mark {
     width: 30px; height: 30px; border-radius: 9px;
@@ -121,6 +134,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
     max-width: 52vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.conn .short { display: none; }
 .conn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: 0 0 auto; }
 .conn.live { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 .conn.live .dot { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
@@ -142,6 +156,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 .icon-btn svg { width: 18px; height: 18px; }
+.icon-btn { position: relative; }
+.icon-btn .badge { position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--warn); color: #fff; font-size: .66rem; font-weight: 700; display: grid; place-items: center; }
+.icon-btn .badge[hidden] { display: none; }
 .icon-btn.spinning svg { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -169,7 +186,35 @@ button, input, select, textarea { font: inherit; color: inherit; }
     background: var(--warn); color: #fff; font-size: .7rem; display: inline-grid; place-items: center;
 }
 
-main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; }
+main { max-width: 1180px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left)); }
+
+/* ---------- Bottom navigation (phones) ---------- */
+.bottomnav {
+    display: none;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.bottomnav button {
+    border: 0; background: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 2px; border-radius: 12px; min-height: 52px;
+    color: var(--text-3); font-size: .68rem; font-weight: 600;
+}
+.bottomnav button svg { width: 22px; height: 22px; }
+.bottomnav button.active { color: var(--accent); }
+.bottomnav button.active svg { background: var(--accent-soft); border-radius: 10px; padding: 2px 10px; width: 44px; box-sizing: content-box; }
+.bottomnav button:active { background: var(--surface-2); }
+
+/* ---------- Pull to refresh ---------- */
+.ptr { position: fixed; left: 50%; top: 0; z-index: 25; transform: translate(-50%, -60px); width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); display: grid; place-items: center; color: var(--accent); pointer-events: none; transition: transform .2s ease; }
+.ptr svg { width: 20px; height: 20px; }
+.ptr.ready svg { color: var(--ok); }
+.ptr.loading svg { animation: spin .8s linear infinite; }
 .view { display: none; animation: fadein .18s ease; }
 .view.active { display: block; }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
@@ -417,7 +462,7 @@ td.actions .btn + .btn { margin-left: 4px; }
 @keyframes toastin { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
 @keyframes toastout { to { opacity: 0; transform: translateX(20px); } }
 @keyframes progress { from { width: 100%; } to { width: 0; } }
-@media (max-width: 520px) { .toasts { top: auto; bottom: 16px; right: 16px; } }
+.toast { touch-action: pan-y; }
 
 /* ---------- Dialog ---------- */
 dialog.dlg {
@@ -446,6 +491,7 @@ dialog.dlg[open] { animation: dlgin .18s ease; display: flex; flex-direction: co
 .day-row .dname { font-weight: 600; font-size: .9rem; }
 .day-row.off .hm { opacity: .4; pointer-events: none; }
 @media (max-width: 460px) { .day-row { grid-template-columns: 1fr auto; } .day-row .hm { grid-column: 1 / -1; grid-row: 2; } }
+.dlg-grip { display: none; }
 .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .preview { margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--text); font-size: .88rem; }
 .preview b { color: var(--accent); }
@@ -454,6 +500,140 @@ dialog.dlg[open] { animation: dlgin .18s ease; display: flex; flex-direction: co
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 pre.json { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; overflow: auto; max-height: 420px; font-size: .8rem; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* =================== Phones & small tablets =================== */
+@media (max-width: 720px) {
+    body { font-size: 15px; overscroll-behavior-y: contain; }
+    .m-only { display: grid !important; }
+    .d-only, .d-inline { display: none !important; }
+    .m-inline { display: inline !important; }
+    .tabs { display: none; }
+    .bottomnav { display: grid; }
+    .topbar-inner { padding-top: 10px; padding-bottom: 10px; gap: 8px; }
+    .brand span { display: none; }
+    .conn { padding: 6px 10px; max-width: none; }
+    .conn .full { display: none; }
+    .conn .short { display: inline; }
+    .icon-btn { width: 40px; height: 40px; }
+    main { padding-top: 14px; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .foot-note { margin-top: 18px; }
+
+    /* Inputs >= 16px so iOS does not zoom on focus; bigger touch targets */
+    .input, select.input, textarea.input { font-size: 16px; padding: 11px 12px; min-height: 44px; }
+    .hm .input { width: 68px; }
+    .btn { min-height: 42px; padding: 10px 14px; }
+    .btn.sm { min-height: 36px; padding: 7px 12px; font-size: .84rem; }
+    .check input { width: 20px; height: 20px; }
+    .seg-ctl { display: flex; width: 100%; }
+    .seg-ctl button { flex: 1; padding: 9px 6px; }
+
+    .page-head { margin-bottom: 12px; }
+    .page-head h1 { font-size: 1.25rem; }
+    .page-head > .btn.primary, .page-head > .row { width: 100%; }
+    .page-head > .btn.primary { width: 100%; }
+    .page-head > .row .btn { flex: 1; }
+    .row > .field { flex: 1; width: auto !important; }
+
+    .card { padding: 16px; border-radius: 16px; }
+    .grid { gap: 12px; }
+    .stat-row { gap: 10px; margin-top: 12px; }
+    .stat { padding: 12px 14px; }
+    .stat .value { font-size: 1.2rem; }
+    .section-title { margin: 22px 0 10px; }
+
+    /* Hero: ring and numbers side by side, compact */
+    .hero { flex-direction: row; align-items: center; gap: 16px; }
+    .ring { width: 104px; height: 104px; }
+    .ring-center .pct { font-size: 1.15rem; }
+    .hero-time { font-size: 2.1rem; }
+    .hero-sub { font-size: .82rem; }
+    .hero-quick { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .hero-quick .btn.ghost { grid-column: 1 / -1; }
+
+    .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto; gap: 6px; }
+    .quick .spacer { display: none; }
+    .quick .btn.ghost { padding-left: 8px; padding-right: 8px; }
+
+    /* Tables become stacked cards */
+    .table-wrap { border: 0; background: none; box-shadow: none; overflow: visible; }
+    table.stack, table.stack tbody { display: block; }
+    table.stack thead { display: none; }
+    table.stack tr {
+        display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 10px 8px;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+        padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow);
+    }
+    table.stack tr.sub { background: var(--surface-2); margin-top: -6px; }
+    table.stack tr.pending { background: var(--info-soft); }
+    table.stack td { display: block; padding: 0; border: 0; background: none !important; min-width: 0; }
+    table.stack td.full { grid-column: 1 / -1; }
+    table.stack td[data-label]::before { content: attr(data-label); display: block; font-size: .68rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 2px; }
+    table.stack td.actions { text-align: left; display: flex; gap: 6px; flex-wrap: wrap; white-space: normal; }
+    table.stack td.actions .btn { flex: 1; }
+    table.stack td.actions .btn + .btn { margin-left: 0; }
+    table.stack td.today::before { color: var(--accent); }
+    table.limits-t tr { --cols: 7; }
+    table.limits-t td.num { text-align: center; font-size: .84rem; white-space: nowrap; }
+    table.limits-t td.num .chip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    table.stack tr.exc-tx { grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; }
+    table.stack tr.exc-tx td.actions .btn { flex: 0 0 auto; }
+    table.limits-t td.num .chip { padding: 2px 5px; font-size: .66rem; }
+
+    .week { height: 130px; gap: 4px; }
+    .week .col .v { font-size: .62rem; }
+
+    .nl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; row-gap: 4px; margin-bottom: 12px; }
+    .nl-row .input { width: 100%; padding-left: 10px; padding-right: 8px; }
+    .nl-row .hint { grid-column: 1 / 3; grid-row: 2; }
+    .nl-row .btn { grid-column: 3; grid-row: 2; justify-self: end; }
+    .nl-group > .btn { width: 100%; }
+    .savebar { bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+    /* Toasts sit above the bottom navigation */
+    .toasts { top: auto; right: 12px; left: 12px; width: auto; bottom: calc(78px + env(safe-area-inset-bottom)); flex-direction: column-reverse; }
+    @keyframes toastin { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+    /* Dialogs become bottom sheets */
+    dialog.dlg, dialog.dlg.wide {
+        width: 100%; max-width: 100%; max-height: 92vh; max-height: 92dvh;
+        margin: auto 0 0 0; border-radius: 22px 22px 0 0;
+    }
+    dialog.dlg[open] { animation: sheetin .26s cubic-bezier(.2, .8, .2, 1); }
+    @keyframes sheetin { from { transform: translateY(100%); } to { transform: none; } }
+    .dlg-grip { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--border); margin: 8px auto 0; flex: 0 0 auto; }
+    .dlg-head { padding: 12px 18px 4px; }
+    .dlg-body { padding: 12px 18px; }
+    .dlg-foot { padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); flex-wrap: nowrap; }
+    .dlg-foot .btn { flex: 1; min-height: 46px; }
+    .preset-row .btn { flex: 1; }
+    .day-row .hm .input { width: 100%; }
+    .day-row .hm { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; }
+}
+@media (max-width: 400px) {
+    .nl-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 8px; }
+    .nl-row .arrow { display: none; }
+    .nl-row .input { padding-left: 8px; padding-right: 4px; }
+    .nl-row .input::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
+    .nl-row .hint { grid-column: 1; }
+    .nl-row .btn { grid-column: 2; }
+}
+@media (max-width: 380px) {
+    .hero-time { font-size: 1.8rem; }
+    .ring { width: 88px; height: 88px; }
+    .stat-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .bottomnav button { font-size: .62rem; }
+}
+@media (hover: none) {
+    .btn:hover { background: var(--surface); }
+    .btn.primary:hover { background: var(--accent); }
+    .btn.danger:hover { background: var(--danger); }
+    .btn.ghost:hover, .btn.soft:hover { background: transparent; }
+    .btn.soft:hover { background: var(--accent-soft); }
+    .btn:active { filter: brightness(.94); }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 </style>
 </head>
 <body>
@@ -467,7 +647,14 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
             <span>Parental Controls</span>
         </div>
         <div class="spacer"></div>
-        <div id="conn" class="conn" role="status" aria-live="polite"><span class="dot"></span><span id="connText">Connecting…</span></div>
+        <div id="conn" class="conn" role="status" aria-live="polite"><span class="dot"></span><span id="connText" class="full">Connecting…</span><span id="connShort" class="short">…</span></div>
+        <button class="icon-btn m-only" data-tab="queue" aria-label="Pending changes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v7h7"/></svg>
+            <span id="queueBadge" class="badge" hidden>0</span>
+        </button>
+        <button class="icon-btn m-only" data-tab="settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
         <button id="refreshBtn" class="icon-btn" title="Refresh now (R)" aria-label="Refresh now">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
         </button>
@@ -506,7 +693,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
                         <div id="heroChips" class="chips"></div>
                     </div>
                 </div>
-                <div class="row" style="margin-top:16px">
+                <div class="row hero-quick" style="margin-top:16px">
                     <button class="btn soft sm" data-quick="OVERALL" data-secs="900">+15m</button>
                     <button class="btn soft sm" data-quick="OVERALL" data-secs="1800">+30m</button>
                     <button class="btn soft sm" data-quick="OVERALL" data-secs="3600">+1h</button>
@@ -652,6 +839,14 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
     <p class="foot-note" id="footNote"></p>
 </main>
 
+<nav class="bottomnav" aria-label="Sections">
+    <button data-tab="overview" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today</button>
+    <button data-tab="limits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></svg>Limits</button>
+    <button data-tab="exceptions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>Exceptions</button>
+    <button data-tab="lockdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Lockdown</button>
+    <button data-tab="usage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 17V11M13 17V7M18 17v-4"/></svg>Usage</button>
+</nav>
+<div id="ptr" class="ptr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <dialog id="dlg" class="dlg"></dialog>
 
@@ -694,6 +889,11 @@ const apiBase = () => (settings.apiUrl || defaultApiUrl()).replace(/\/+$/, '');
 function applyTheme() {
     if (settings.theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', settings.theme);
+    // Keep the phone's status bar / browser chrome in step with a forced theme
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+        const light = m.media.includes('light');
+        m.content = settings.theme === 'auto' ? (light ? '#f4f5f8' : '#0f1117') : settings.theme === 'dark' ? '#0f1117' : '#f4f5f8';
+    });
 }
 applyTheme();
 
@@ -1113,6 +1313,22 @@ function toast(type, title, message = '', ms) {
     const close = () => { clearTimeout(timer); el.classList.add('out'); setTimeout(() => el.remove(), 200); };
     const start = () => { timer = setTimeout(close, dur); };
     el.querySelector('.tx').onclick = close;
+    // Swipe sideways to dismiss (touch)
+    let sx = null;
+    el.addEventListener('touchstart', ev => { sx = ev.touches[0].clientX; clearTimeout(timer); }, { passive: true });
+    el.addEventListener('touchmove', ev => {
+        if (sx === null) return;
+        const dx = ev.touches[0].clientX - sx;
+        el.style.transform = `translateX(${dx}px)`;
+        el.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 200));
+    }, { passive: true });
+    el.addEventListener('touchend', ev => {
+        const dx = ev.changedTouches[0].clientX - (sx ?? 0);
+        sx = null;
+        if (Math.abs(dx) > 80) { el.remove(); return; }
+        el.style.transform = ''; el.style.opacity = '';
+        start();
+    });
     el.addEventListener('mouseenter', () => { clearTimeout(timer); el.querySelector('.tp').style.animationPlayState = 'paused'; });
     el.addEventListener('mouseleave', () => { el.querySelector('.tp').style.animationPlayState = 'running'; start(); });
     box.appendChild(el);
@@ -1143,6 +1359,7 @@ function openDialog(opts) {
         dlg.className = 'dlg' + (opts.wide ? ' wide' : '');
         dlg.innerHTML = `
             <form method="dialog" novalidate style="display:contents">
+                <div class="dlg-grip" aria-hidden="true"></div>
                 <div class="dlg-head">
                     <div class="di ${esc(opts.tone || '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DLG_ICONS[opts.icon || 'question']}</svg></div>
                     <div><h2>${esc(opts.title)}</h2>${opts.subtitle ? `<p>${opts.subtitle}</p>` : ''}</div>
@@ -1157,9 +1374,14 @@ function openDialog(opts) {
         const finish = value => {
             if (done) return;
             done = true;
+            S.dlgCancel = null;
             dlg.close();
+            dlg.style.transform = '';
+            // Drop the history entry pushed for this dialog
+            if (history.state && history.state.dlg) { S.ignorePop = true; history.back(); }
             resolve({ value, form });
         };
+        S.dlgCancel = () => finish(null);
         dlg.querySelectorAll('.dlg-foot button').forEach(b => {
             b.addEventListener('click', e => {
                 e.preventDefault();
@@ -1184,6 +1406,26 @@ function openDialog(opts) {
         dlg.oncancel = e => { e.preventDefault(); finish(null); };
         dlg.onclick = e => { if (e.target === dlg) finish(null); };
         dlg.showModal();
+        // The phone's back button closes the dialog instead of leaving the page
+        try { history.pushState({ dlg: 1, tab: S.tab }, '', location.hash || `#${S.tab}`); } catch (e) { /* ignore */ }
+        // Swipe the sheet down to dismiss
+        let sy = null;
+        const head = dlg.querySelector('.dlg-head'), grip = dlg.querySelector('.dlg-grip');
+        [head, grip].forEach(h => h && h.addEventListener('touchstart', ev => { sy = ev.touches[0].clientY; dlg.style.transition = 'none'; }, { passive: true }));
+        // Listeners go on the form, which is rebuilt for every dialog, so they never pile up
+        form.addEventListener('touchmove', ev => {
+            if (sy === null) return;
+            const dy = Math.max(0, ev.touches[0].clientY - sy);
+            dlg.style.transform = `translateY(${dy}px)`;
+        }, { passive: true });
+        form.addEventListener('touchend', ev => {
+            if (sy === null) return;
+            const dy = ev.changedTouches[0].clientY - sy;
+            sy = null;
+            dlg.style.transition = 'transform .2s ease';
+            if (dy > 110) finish(null);
+            else dlg.style.transform = '';
+        });
         if (opts.onMount) opts.onMount(form);
         const first = form.querySelector('.dlg-body input:not([type=hidden]):not([readonly]), .dlg-body select');
         (first || form.querySelector('.dlg-foot .btn.primary, .dlg-foot .btn.danger') || form.querySelector('.dlg-foot .btn')).focus();
@@ -1253,15 +1495,18 @@ function lastSeenMs() {
 
 function renderConnection() {
     const conn = $('#conn'), text = $('#connText'), banner = $('#banner');
+    let short = '…';
     conn.className = 'conn';
     banner.className = 'banner';
     const seen = lastSeenMs();
     if (S.source === 'live') {
         conn.classList.add('live');
         text.textContent = "Live · kid's PC online";
+        short = 'Live';
     } else if (S.source === 'cache') {
         conn.classList.add('cache');
         text.textContent = `Kid's PC offline · seen ${fmtAgo(seen)}`;
+        short = 'PC off';
         banner.classList.add('show', 'cache');
         $('#bannerTitle').textContent = "The kid's computer is turned off or unreachable.";
         $('#bannerText').textContent = `Showing the last known data${seen ? ` from ${fmtTime(seen)}` : ''}. Changes you make are queued and applied when it comes back online.`;
@@ -1272,6 +1517,7 @@ function renderConnection() {
             conn.className = 'conn';
         } else {
             text.textContent = S.data ? `Server unreachable · buffered ${fmtAgo(S.bufferSavedAt)}` : 'Server unreachable';
+            short = 'Offline';
             banner.classList.add('show', 'buffer');
             $('#bannerTitle').textContent = `Cannot reach the server at ${apiBase()}.`;
             $('#bannerText').textContent = S.data
@@ -1285,6 +1531,10 @@ function renderConnection() {
     const qc = $('#queueCount');
     qc.hidden = !qn;
     qc.textContent = qn;
+    $('#connShort').textContent = short;
+    const qb = $('#queueBadge');
+    qb.hidden = !qn;
+    qb.textContent = qn;
     $('#footNote').textContent = S.data
         ? `Data ${S.source === 'live' ? 'updated' : 'from'} ${S.source === 'live' ? fmtAgo(S.receivedAt) : fmtTime(S.source === 'buffer' ? (S.bufferSavedAt || seen) : (seen || S.receivedAt))} · refreshing every ${settings.pollSec}s · ${apiBase()}`
         : apiBase();
@@ -1503,14 +1753,16 @@ function renderLimits() {
             return;
         }
         const today = dayNameOf(new Date());
-        const cell = v => (v === undefined || v === null) ? '<span class="hint">—</span>' : Number(v) === 0 ? '<span class="chip danger">Blocked</span>' : fmtDur(v);
-        let html = `<div class="table-wrap"><table><thead><tr><th>Application</th>${DAYS.map(d => `<th${d === today ? ' style="color:var(--accent)"' : ''}>${DAY_SHORT[d]}</th>`).join('')}<th></th></tr></thead><tbody>`;
+        // Phones get a compact "1h30" form so seven days fit on one line
+        const compact = v => { const h = Math.floor(v / 3600), m = Math.round((v % 3600) / 60); return h ? `${h}h${m ? String(m).padStart(2, '0') : ''}` : `${m}m`; };
+        const cell = v => (v === undefined || v === null) ? '<span class="hint">—</span>' : Number(v) === 0 ? '<span class="chip danger">Blocked</span>' : `<span class="d-inline">${fmtDur(v)}</span><span class="m-inline">${compact(Number(v))}</span>`;
+        let html = `<div class="table-wrap"><table class="stack limits-t"><thead><tr><th>Application</th>${DAYS.map(d => `<th${d === today ? ' style="color:var(--accent)"' : ''}>${DAY_SHORT[d]}</th>`).join('')}<th></th></tr></thead><tbody>`;
         for (const name of names) {
             const l = limits[name] || {};
             const badges = (pendingDel.has(name) ? ' <span class="chip danger">Deletion queued</span>' : '') + (pendingEdit.has(name) ? ' <span class="chip info">Edit queued</span>' : '');
-            html += `<tr><td><b>${esc(appLabel(name))}</b>${name === 'OVERALL' ? ' <span class="hint mono">OVERALL</span>' : ''}${badges}</td>
-                ${DAYS.map(d => `<td class="num">${cell(l[d])}</td>`).join('')}
-                <td class="actions">
+            html += `<tr><td class="full"><b>${esc(appLabel(name))}</b>${name === 'OVERALL' ? ' <span class="hint mono">OVERALL</span>' : ''}${badges}</td>
+                ${DAYS.map(d => `<td class="num${d === today ? ' today' : ''}" data-label="${DAY_SHORT[d]}">${cell(l[d])}</td>`).join('')}
+                <td class="actions full">
                     <button class="btn sm soft" data-action="exception" data-app="${esc(name)}">Exception</button>
                     <button class="btn sm" data-action="edit-limit" data-app="${esc(name)}">Edit</button>
                     <button class="btn sm ghost" data-action="delete-limit" data-app="${esc(name)}" title="Delete">✕</button>
@@ -1518,9 +1770,9 @@ function renderLimits() {
         }
         for (const q of pendingNew) {
             const l = q.data.limits || {};
-            html += `<tr class="pending"><td><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">Queued</span></td>
-                ${DAYS.map(d => `<td class="num">${cell(l[d])}</td>`).join('')}
-                <td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
+            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">Queued</span></td>
+                ${DAYS.map(d => `<td class="num" data-label="${DAY_SHORT[d]}">${cell(l[d])}</td>`).join('')}
+                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
         }
         html += '</tbody></table></div><p class="hint" style="margin-top:8px">— means no limit for that day. A limit of 0 blocks the app for the whole day.</p>';
         $('#limitsTable').innerHTML = html;
@@ -1755,25 +2007,25 @@ async function renderExceptions(force) {
             if (c.kind === 'add') return `<span class="chip ${c.value >= 0 ? 'ok' : 'danger'}">${c.value >= 0 ? '+' : '-'}${fmtDur(Math.abs(c.value))}</span>`;
             return `<span class="chip">${esc(t)}</span>`;
         };
-        let html = '<div class="table-wrap"><table><thead><tr><th>Application</th><th>Adjustment</th><th>Reason</th><th></th></tr></thead><tbody>';
+        let html = '<div class="table-wrap"><table class="stack"><thead><tr><th>Application</th><th>Adjustment</th><th>Reason</th><th></th></tr></thead><tbody>';
         for (const app of apps) {
             const list = normalizeExcList(exc[app]);
             list.forEach((e, i) => {
                 const qid = delTx.get(`${app}/${i}`);
-                html += `<tr><td>${esc(appLabel(app))}${qid !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td><td>${desc(e[0])}</td><td>${e[1] && e[1] !== 'null' ? esc(e[1]) : '<span class="hint">—</span>'}</td>
+                html += `<tr class="exc-tx"><td class="full"><b>${esc(appLabel(app))}</b>${qid !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td><td data-label="Adjustment">${desc(e[0])}</td><td data-label="Reason">${e[1] && e[1] !== 'null' ? esc(e[1]) : '<span class="hint">—</span>'}</td>
                     <td class="actions">${qid !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${qid}">Undo</button>` : ''}
                     <button class="btn sm ghost" data-action="delete-exc-tx" data-app="${esc(app)}" data-date="${esc(date)}" data-index="${i}" title="Delete">✕</button></td></tr>`;
             });
             const lim = computeLimit(app, dayName, S.data.limits || {}, exc);
             const allQ = delAll.get(app);
-            html += `<tr class="sub"><td>${esc(appLabel(app))} · result${allQ !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td>
-                <td colspan="2">${lim.unlimited ? 'No limit configured' : `${lim.configured === null ? 'No base limit' : fmtDur(lim.configured)} → <b>${fmtDur(lim.effective)}</b>`}</td>
-                <td class="actions">${allQ !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${allQ}">Undo</button>` : ''}
+            html += `<tr class="sub"><td class="full">${esc(appLabel(app))} · result${allQ !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td>
+                <td colspan="2" class="full" data-label="Today's limit">${lim.unlimited ? 'No limit configured' : `${lim.configured === null ? 'No base limit' : fmtDur(lim.configured)} → <b>${fmtDur(lim.effective)}</b>`}</td>
+                <td class="actions full">${allQ !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${allQ}">Undo</button>` : ''}
                 <button class="btn sm" data-action="delete-exc-all" data-app="${esc(app)}" data-date="${esc(date)}">Delete all</button></td></tr>`;
         }
         for (const q of queuedAdd) {
-            html += `<tr class="pending"><td>${esc(appLabel(q.data.app_name))} <span class="chip info">Queued</span></td><td>${desc(q.data.exception_time)}</td><td>${q.data.reason ? esc(q.data.reason) : '<span class="hint">—</span>'}</td>
-                <td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
+            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">Queued</span></td><td data-label="Adjustment">${desc(q.data.exception_time)}</td><td data-label="Reason">${q.data.reason ? esc(q.data.reason) : '<span class="hint">—</span>'}</td>
+                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
         }
         html += '</tbody></table></div>';
         $('#exceptionsTable').innerHTML = html;
@@ -1936,14 +2188,14 @@ async function renderUsage() {
         $('#usageTable').innerHTML = `<div class="card empty"><b>No usage recorded on ${esc(date)}</b>Usage appears once the engine runs on the kid's computer.</div>`;
     } else {
         const max = Math.max(...names.map(n => Number(usage[n]) || 0), 1);
-        let html = '<div class="table-wrap"><table><thead><tr><th>Application</th><th>Used</th><th style="width:40%">Share</th><th>Limit (base)</th></tr></thead><tbody>';
+        let html = '<div class="table-wrap"><table class="stack"><thead><tr><th>Application</th><th>Used</th><th style="width:40%">Share</th><th>Limit (base)</th></tr></thead><tbody>';
         for (const n of names) {
             const secs = Number(usage[n]) || 0;
             const lim = limits[n] ? limits[n][dayName] : undefined;
             const over = lim !== undefined && lim !== null && secs >= lim;
-            html += `<tr><td><b>${esc(appLabel(n))}</b></td><td class="num">${fmtDur(secs)}</td>
-                <td><div class="bar ${over ? 'danger' : n === 'OVERALL' ? 'ok' : ''}"><i style="width:${(secs / max) * 100}%"></i></div></td>
-                <td class="num">${lim === undefined || lim === null ? '<span class="hint">—</span>' : fmtDur(lim)}${over ? ' <span class="chip danger">reached</span>' : ''}</td></tr>`;
+            html += `<tr><td class="full"><b>${esc(appLabel(n))}</b></td><td class="num" data-label="Used">${fmtDur(secs)}</td>
+                <td class="full" style="grid-row:3"><div class="bar ${over ? 'danger' : n === 'OVERALL' ? 'ok' : ''}"><i style="width:${(secs / max) * 100}%"></i></div></td>
+                <td class="num" data-label="Limit">${lim === undefined || lim === null ? '<span class="hint">—</span>' : fmtDur(lim)}${over ? ' <span class="chip danger">reached</span>' : ''}</td></tr>`;
         }
         html += '</tbody></table></div>';
         $('#usageTable').innerHTML = html;
@@ -2008,8 +2260,8 @@ function renderQueue() {
             $('#queueTable').innerHTML = '<div class="card empty"><b>Nothing pending</b>All changes have reached the kid\'s computer.</div>';
             return;
         }
-        $('#queueTable').innerHTML = `<div class="table-wrap"><table><thead><tr><th>#</th><th>Change</th><th></th></tr></thead><tbody>
-            ${q.map(i => `<tr><td class="num hint">${i.id}</td><td>${describeQueueItem(i)}</td><td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${i.id}">Cancel</button></td></tr>`).join('')}
+        $('#queueTable').innerHTML = `<div class="table-wrap"><table class="stack" style="--cols:1"><thead><tr><th>#</th><th>Change</th><th></th></tr></thead><tbody>
+            ${q.map(i => `<tr><td class="num hint d-only">${i.id}</td><td>${describeQueueItem(i)}</td><td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${i.id}">Cancel</button></td></tr>`).join('')}
         </tbody></table></div>`;
     });
 }
@@ -2064,9 +2316,14 @@ async function uploadConfig(file) {
 /* =====================================================================
  * Events
  * ===================================================================== */
-function showTab(name) {
+const TABS = ['overview', 'limits', 'exceptions', 'lockdown', 'usage', 'queue', 'settings'];
+function showTab(name, { push = true } = {}) {
+    if (!TABS.includes(name)) name = 'overview';
+    const changed = S.tab !== name;
     S.tab = name;
-    $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    $$('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    if (push && changed) { try { history.pushState({ tab: name }, '', `#${name}`); } catch (e) { /* ignore */ } }
+    if (changed) window.scrollTo({ top: 0 });
     $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
     try { sessionStorage.setItem('pcv2.tab', name); } catch (e) { /* ignore */ }
     if (name === 'usage') { renderUsage(); loadUsageAll(); }
@@ -2074,7 +2331,7 @@ function showTab(name) {
 }
 
 document.addEventListener('click', async e => {
-    const tab = e.target.closest('.tab');
+    const tab = e.target.closest('[data-tab]');
     if (tab) { showTab(tab.dataset.tab); return; }
 
     const q = e.target.closest('[data-quick]');
@@ -2217,6 +2474,47 @@ window.addEventListener('beforeunload', e => {
     if (S.nlDirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
+window.addEventListener('popstate', e => {
+    if (S.ignorePop) { S.ignorePop = false; return; }
+    if (S.dlgCancel) { S.dlgCancel(); return; }
+    const tab = (e.state && e.state.tab) || location.hash.slice(1) || 'overview';
+    showTab(tab, { push: false });
+});
+
+/* Pull down at the top of the page to refresh (touch screens) */
+(function pullToRefresh() {
+    const ptr = $('#ptr');
+    let y0 = null, dy = 0;
+    window.addEventListener('touchstart', e => {
+        if (window.scrollY > 0 || $('#dlg').open || e.touches.length !== 1) { y0 = null; return; }
+        y0 = e.touches[0].clientY; dy = 0;
+    }, { passive: true });
+    window.addEventListener('touchmove', e => {
+        if (y0 === null) return;
+        dy = e.touches[0].clientY - y0;
+        if (dy <= 0) { ptr.style.transform = ''; return; }
+        const pull = Math.min(dy / 2, 80);
+        ptr.style.transition = 'none';
+        ptr.style.transform = `translate(-50%, ${pull - 60}px) rotate(${dy}deg)`;
+        ptr.classList.toggle('ready', dy > 140);
+    }, { passive: true });
+    window.addEventListener('touchend', () => {
+        if (y0 === null) return;
+        y0 = null;
+        ptr.style.transition = '';
+        if (dy > 140) {
+            ptr.classList.remove('ready');
+            ptr.classList.add('loading');
+            ptr.style.transform = 'translate(-50%, 70px)';
+            refresh({ manual: true }).finally(() => { ptr.classList.remove('loading'); ptr.style.transform = ''; });
+        } else {
+            ptr.classList.remove('ready');
+            ptr.style.transform = '';
+        }
+        dy = 0;
+    });
+})();
+
 /* =====================================================================
  * Polling
  * ===================================================================== */
@@ -2244,9 +2542,11 @@ setInterval(() => { if (S.data) renderActivity(model()); renderSettingsInfo(); }
     $('#usageDate').value = localDate();
     // Instant first paint from the browser buffer, then revalidate
     if (loadBufferIntoState()) renderAll();
-    let tab = 'overview';
-    try { tab = sessionStorage.getItem('pcv2.tab') || 'overview'; } catch (e) { /* ignore */ }
-    if ($(`.tab[data-tab="${tab}"]`)) showTab(tab);
+    let tab = location.hash.slice(1);
+    if (!TABS.includes(tab)) { try { tab = sessionStorage.getItem('pcv2.tab') || 'overview'; } catch (e) { tab = 'overview'; } }
+    S.tab = null;
+    showTab(tab, { push: false });
+    try { history.replaceState({ tab: S.tab }, '', `#${S.tab}`); } catch (e) { /* ignore */ }
     refresh().finally(() => { S.booting = false; renderConnection(); });
     restartPolling();
 })();
