@@ -135,6 +135,7 @@ The secondary API will start on `http://localhost:5001`
 - Toast notifications and confirmation dialogs for every change; queued changes (made while the kid's PC is off) are marked and can be cancelled.
 - **Browser buffer**: the latest data and periodic usage samples (interval configurable under Settings) are kept in the browser's localStorage. When the kid's PC is off the dashboard shows the server's cached data with a "last seen" time; if the server itself is unreachable it falls back to the browser buffer. The page also paints instantly from the buffer on load.
 - **Phone-friendly**: bottom navigation bar, dialogs open as bottom sheets (swipe down to close), tables turn into cards, large touch targets, no zoom-on-focus on iOS, safe-area support for notched phones, pull down to refresh, swipe toasts away, and the back button closes dialogs and steps back through tabs. Add it to your home screen for a full-screen app feel.
+- **Light / dark switch** in the header (or press `T`). The choice is saved in a cookie (`pcv2_theme`, kept for a year) and applied before the page draws, so there is no flash. Settings → Theme can also set it back to "Match system".
 - One batched request per refresh (`GET /api/dashboard/data`, which now also returns today's usage and the pending queue), request timeouts, and polling that pauses while the tab is hidden.
 
 ## 📚 API Documentation
