@@ -65,6 +65,10 @@ log.setLevel(logging.ERROR) """
 
 # Configuration
 PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api')
+# Shared secret the primary API requires as "Authorization: Bearer <token>"
+PRIMARY_API_TOKEN = os.getenv('PRIMARY_API_TOKEN') or None
+if PRIMARY_API_TOKEN:
+    PRIMARY_API_SESSION.headers['Authorization'] = f'Bearer {PRIMARY_API_TOKEN}'
 QUEUE_DB = 'request_queue.db'
 SYNC_INTERVAL = 10  # seconds
 REQUEST_TIMEOUT = 4.0  # seconds for data requests
@@ -293,6 +297,9 @@ def check_primary_alive():
             else:
                 # Log non-200 for diagnosis
                 print(f"[CHECK] Probe to {url} returned status {response.status_code}")
+                if response.status_code == 401:
+                    print("[CHECK] Primary API rejected the token: PRIMARY_API_TOKEN must match in clientside/.env and serverside/.env")
+                    break
         except requests.exceptions.RequestException as e:
             last_exception = e
             # Keep trying other probe urls
@@ -323,6 +330,13 @@ def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
         else:
             return False, {'status': 'error', 'message': 'Unsupported method'}, 400
         
+        # A 401 means our token is wrong, not that the user's request was bad.
+        # Report it as a gateway error so the dashboard doesn't treat it as
+        # its own sign-in expiring.
+        if response.status_code == 401:
+            print("[ERROR] Primary API rejected the token: PRIMARY_API_TOKEN must match in clientside/.env and serverside/.env")
+            return False, {'status': 'error', 'message': 'Primary API rejected the server token (check PRIMARY_API_TOKEN)'}, 502
+
         # Check if response is successful
         if response.status_code >= 400:
             print(f"[ERROR] Primary API returned {response.status_code}")
@@ -795,6 +809,8 @@ if __name__ == "__main__":
     print("PARENTAL CONTROL - SECONDARY SERVER API")
     print("=" * 70)
     print(f"Primary API: {PRIMARY_API_URL}")
+    if not PRIMARY_API_TOKEN:
+        print("WARNING: PRIMARY_API_TOKEN is not set; the primary API will reject requests unless it runs with PRIMARY_API_AUTH_DISABLED=true")
     print(f"Queue Database: {QUEUE_DB}")
     print(f"Sync Interval: {SYNC_INTERVAL} seconds")
     print("=" * 70)
