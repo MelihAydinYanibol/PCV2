@@ -5,28 +5,50 @@ Provides REST endpoints to manage time limits, exceptions, and monitor usage
 
 from flask import Flask, request, jsonify
 from datetime import datetime
+from dotenv import load_dotenv
+import hmac
 import json
 import os
+import sys
 from typing import Dict, Any, Tuple
+
+# Load clientside/.env first, then .env in the working directory
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+load_dotenv()
+
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
+# Shared secret with the secondary API. Only requests carrying
+# "Authorization: Bearer <PRIMARY_API_TOKEN>" may read or change the config.
+PRIMARY_API_TOKEN = os.getenv("PRIMARY_API_TOKEN") or None
+PRIMARY_API_AUTH_DISABLED = _env_bool("PRIMARY_API_AUTH_DISABLED")
+PRIMARY_API_HOST = os.getenv("PRIMARY_API_HOST", "0.0.0.0")
+PRIMARY_API_PORT = int(os.getenv("PRIMARY_API_PORT", "5000"))
 
 app = Flask(__name__)
 
-# Enable CORS
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "ok"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-        return response, 200
+# No CORS headers on purpose: only the secondary API (a server, not a
+# browser) talks to this API, so web pages must not be able to call it.
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
-    return response
+
+@app.before_request
+def require_token():
+    """Reject /api/* requests that don't carry the shared token."""
+    if PRIMARY_API_AUTH_DISABLED or not request.path.startswith("/api"):
+        return None
+    header = request.headers.get("Authorization", "")
+    if PRIMARY_API_TOKEN and header.startswith("Bearer ") and hmac.compare_digest(
+        header[7:].strip().encode("utf-8"), PRIMARY_API_TOKEN.encode("utf-8")
+    ):
+        return None
+    return jsonify({"status": "error", "message": "Unauthorized"}), 401
+
 
 # Configuration file paths
 LIMIT_FILE = "timelimit.json"
@@ -701,6 +723,19 @@ def internal_error(error):
 # ============================================================================
 
 if __name__ == "__main__":
+    if PRIMARY_API_AUTH_DISABLED:
+        print("[AUTH] WARNING: authentication is DISABLED (PRIMARY_API_AUTH_DISABLED=true). "
+              "Anyone who can reach this port, including the monitored user, can change limits.")
+    elif not PRIMARY_API_TOKEN:
+        sys.exit(
+            "\n[AUTH] No PRIMARY_API_TOKEN configured.\n"
+            "       Add PRIMARY_API_TOKEN=... to clientside/.env (and the same value to serverside/.env).\n"
+            "       Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\"\n"
+            "       or set PRIMARY_API_AUTH_DISABLED=true to run without it (not recommended).\n"
+        )
+    elif len(PRIMARY_API_TOKEN) < 20:
+        print("[AUTH] WARNING: PRIMARY_API_TOKEN is short. Use a long random value.")
+
     ensure_files_exist()
     print("Starting Parental Control Configuration API...")
     print("Available endpoints:")
@@ -724,4 +759,5 @@ if __name__ == "__main__":
     print("  GET    /api/status")
     print("  GET    /api/config")
     print("  POST   /api/config")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    print(f"Listening on {PRIMARY_API_HOST}:{PRIMARY_API_PORT} (requests need Authorization: Bearer <PRIMARY_API_TOKEN>)")
+    app.run(debug=False, host=PRIMARY_API_HOST, port=PRIMARY_API_PORT)

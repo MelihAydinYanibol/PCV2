@@ -27,7 +27,8 @@ ParentalControlsV2/
 │   ├── client_engine.py     # Main application monitor and enforcer
 │   ├── night_lockdown.py    # Night lockdown enforcer (shuts down in blocked zones)
 │   ├── client_master.py     # Launches api, engine and night lockdown together
-│   ├── api.py               # Configuration REST API (PORT 5000)
+│   ├── api.py               # Configuration REST API (PORT 5000, needs PRIMARY_API_TOKEN)
+│   ├── .env.example          # Copy to .env and set PRIMARY_API_TOKEN
 │   ├── requirements.txt      # Python dependencies
 │   ├── timelimit.json        # Application time limits (per day)
 │   ├── timeusage.json        # Current usage statistics
@@ -36,7 +37,10 @@ ParentalControlsV2/
 │   └── used_exceptions.json  # Tracking of used exceptions
 │
 ├── serverside/              # Central dashboard and proxy
-│   ├── secondary_api.py     # Buffering proxy API (PORT 5001)
+│   ├── secondary_api.py     # Buffering proxy API (PORT 5035)
+│   ├── auth.py               # Password sign-in, sessions, security headers
+│   ├── login.html            # Sign-in page
+│   ├── .env.example          # Copy to .env and set DASHBOARD_PASSWORD + PRIMARY_API_TOKEN
 │   ├── dashboard.html        # Web dashboard UI
 │   ├── requirements.txt       # Python dependencies
 │   └── request_queue.db      # SQLite queue for offline requests
@@ -67,9 +71,8 @@ env\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create .env file (for Home Assistant integration - optional)
-echo HASS_URL=http://your-hass-instance:8123 > .env
-echo HASS_TOKEN=your-token >> .env
+# Create .env and set PRIMARY_API_TOKEN (required, see "Primary API token" below)
+copy .env.example .env      # cp on Linux/macOS
 ```
 
 #### 2. Serverside Setup
@@ -95,7 +98,8 @@ cd clientside
 env\Scripts\activate
 python api.py
 ```
-The primary API will start on `http://localhost:5000`
+The primary API will start on `http://localhost:5000`. It refuses to start until
+`PRIMARY_API_TOKEN` is set in `clientside/.env` (see Step 4).
 
 #### Step 2: Start Clientside Monitoring Engine
 In a new terminal:
@@ -124,10 +128,40 @@ python secondary_api.py
 ```
 The secondary API will start on `http://localhost:5001`
 
-#### Step 4: Access Dashboard
-1. Open `http://YOUR_SERVER:5035/` — the secondary API serves the dashboard itself, so it talks to the API on the same address with no configuration.
-2. Alternatively open `serverside/dashboard.html` directly; it defaults to `http://127.0.0.1:5035/api`, which you can change under **Settings** (stored in the browser).
-3. Configure time limits, exceptions, and monitor usage
+#### Step 4: Set the dashboard password
+```bash
+cd serverside
+copy .env.example .env      # cp on Linux/macOS
+```
+Edit `serverside/.env` and set `DASHBOARD_PASSWORD` to a long passphrase. To keep only a hash on disk instead,
+run `python auth.py --hash` and paste the printed `DASHBOARD_PASSWORD_HASH=...` line in place of `DASHBOARD_PASSWORD`.
+The server refuses to start without one of them.
+
+**Primary API token.** Generate a random token and put the *same* value in both
+`clientside/.env` (kid's PC) and `serverside/.env`:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+```env
+PRIMARY_API_TOKEN=the-printed-value
+```
+The primary API answers `401 Unauthorized` to any `/api/*` request without
+`Authorization: Bearer <PRIMARY_API_TOKEN>`, so only the secondary API can read or change
+the configuration. If the two values don't match, the secondary API logs
+`Primary API rejected the token` and shows the primary as offline (changes are queued).
+
+#### Step 5: Access Dashboard
+1. Open `http://YOUR_SERVER:5035/` and sign in with the password. Your browser (e.g. Google Password Manager) offers to save it, and fills it in next time.
+2. Configure time limits, exceptions, and monitor usage
+
+**Sign-in & security**
+- Password only, no username. It is compared in constant time (or checked against the scrypt hash).
+- Sessions are random tokens stored server-side (only their SHA-256), in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS); they last `SESSION_DAYS` (default 30). **Sign out** in Settings ends the session on the server and can wipe the browser buffer.
+- After 5 wrong passwords from one address, sign-in is locked for 30 s, doubling with each further miss (max 15 min).
+- Every write must come from the dashboard's own origin (CSRF protection), there are no CORS headers, and pages send a strict Content-Security-Policy, `X-Frame-Options: DENY` and `no-store` caching.
+- Scripts can call the API with `Authorization: Bearer <DASHBOARD_API_TOKEN>` if you set that variable.
+- The dashboard must now be opened through the server; opening `dashboard.html` as a local file no longer works.
+- On the open internet, put the server behind HTTPS (e.g. Caddy or nginx) and set `TRUST_PROXY=true` and `COOKIE_SECURE=true`.
 
 **Dashboard highlights**
 - **Overview** with a live countdown of the computer time left today. It takes the overall limit, every exception (add / remove / set exact) and the next night lockdown into account, and shows the time left per app (capped by the computer's own time left).
@@ -141,6 +175,9 @@ The secondary API will start on `http://localhost:5001`
 ## 📚 API Documentation
 
 ### Clientside API (Port 5000)
+
+Every request needs `Authorization: Bearer <PRIMARY_API_TOKEN>`; otherwise the API returns
+`401`. Normally only the secondary API calls it. See `clientside/API_USAGE_EXAMPLES.md`.
 
 #### Time Limits
 ```bash
@@ -340,13 +377,45 @@ take effect without a restart.
 - Secondary server queues use encrypted SQLite database
 - No personal data transmitted unless explicitly configured
 - Optional Home Assistant integration for smart home control
-- CORS enabled for cross-origin requests
+- The primary API (kid's PC) only accepts requests carrying the shared `PRIMARY_API_TOKEN`,
+  sends no CORS headers (web pages can't call it) and never runs in Flask debug mode
+- The dashboard and secondary API require the dashboard password
+
+### Protecting the clientside folder
+
+The token stops anyone from changing settings **through the API**, but the engines read
+`timelimit.json`, `exceptionaltime.json`, `nightlockdown.json` and `timeusage.json`
+straight from disk. If the kid can write to the `clientside` folder they can still edit
+those files, delete them, read the token from `clientside/.env`, or stop the engines.
+To close that gap:
+
+1. Give the kid a **standard (non-administrator)** Windows account.
+2. Install `clientside` in a folder the kid can't write to, e.g. `C:\ProgramData\PCV2`, and
+   remove write access for their account (Properties → Security, or
+   `icacls C:\ProgramData\PCV2 /inheritance:r /grant:r Administrators:(OI)(CI)F SYSTEM:(OI)(CI)F`
+   and, only if the toast notifications need it, `/grant:r Users:(OI)(CI)RX`). Do **not**
+   give the kid read access to `.env`.
+3. Run `client_master.py` from a **Scheduled Task** owned by an admin account or
+   `SYSTEM` ("Run whether user is logged on or not", restart on failure), with
+   "Start in" set to that folder, so the kid can't kill it or replace the scripts.
+4. If the secondary API runs on the same PC, set `PRIMARY_API_HOST=127.0.0.1`. Otherwise
+   allow port 5000 in the firewall only from the server's address.
 
 ## 📝 Environment Variables
 
-Create a `.env` file in the clientside directory (optional):
+Create `clientside/.env` from `clientside/.env.example`:
 
 ```env
+# Shared secret with the secondary API (required, same value in serverside/.env)
+PRIMARY_API_TOKEN=long-random-token
+
+# Listen address / port of the primary API (defaults shown)
+# PRIMARY_API_HOST=0.0.0.0
+# PRIMARY_API_PORT=5000
+
+# Run without the token (NOT recommended)
+# PRIMARY_API_AUTH_DISABLED=false
+
 # Home Assistant Integration (optional)
 HASS_URL=http://your-home-assistant:8123
 HASS_TOKEN=your_long_lived_access_token
@@ -396,11 +465,15 @@ MAX_OUTSTANDING = 3           # pending toasts before the backend is deemed stuc
 
 ### Primary API Not Starting
 - Ensure port 5000 is not in use: `netstat -ano | findstr :5000`
+- `[AUTH] No PRIMARY_API_TOKEN configured`: create `clientside/.env` with `PRIMARY_API_TOKEN=...`
 - Check Python path and virtual environment activation
 - Run as Administrator if encountering permission issues
 
 ### Secondary API Can't Reach Primary
 - Verify primary API is running on the configured URL
+- `Primary API rejected the token` / probe returns `401`: `PRIMARY_API_TOKEN` differs between
+  `clientside/.env` and `serverside/.env` (restart both after changing it)
+- With `PRIMARY_API_HOST=127.0.0.1` the primary only accepts connections from its own PC
 - Check firewall settings
 - Primary API will auto-queue requests until primary comes back online
 

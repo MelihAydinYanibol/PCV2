@@ -68,6 +68,25 @@ Background Worker → Checks Primary Status → Syncs all queued requests
                   → Primary API processes them → Queue cleared
 ```
 
+## Authentication
+
+Every endpoint (and the dashboard at `/`) requires sign-in. Set `DASHBOARD_PASSWORD`
+(or `DASHBOARD_PASSWORD_HASH`, made with `python auth.py --hash`) in `serverside/.env`.
+
+- Browsers: sign in at `/login`; a session cookie is set. `POST /logout` ends it.
+- Scripts: set `DASHBOARD_API_TOKEN` in `.env` and send `Authorization: Bearer <token>`.
+- Unauthenticated API calls get `401 {"status": "error", "auth": "required"}`.
+- Writes carrying an `Origin` header from another site get `403`.
+
+The secondary API also authenticates itself to the primary API on the kid's PC: set
+`PRIMARY_API_TOKEN` in `serverside/.env` to the same value as in `clientside/.env`. It is
+sent as `Authorization: Bearer <token>` on every forwarded request and status probe; the
+primary API rejects anything else with `401`.
+
+```bash
+curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" http://YOUR_SERVER:5035/api/server/status
+```
+
 ## Endpoints
 
 ### Standard API Endpoints (Proxy)
@@ -262,6 +281,9 @@ Check the `PRIMARY_API_URL` setting matches your primary API location:
 PRIMARY_API_URL = 'http://127.0.0.1:5000/api'  # Adjust IP/port as needed
 ```
 
+If the log shows `Primary API rejected the token` (probe returns `401`), `PRIMARY_API_TOKEN`
+differs between `serverside/.env` and `clientside/.env`.
+
 ### Requests Not Syncing
 
 1. Check if primary API is online:
@@ -333,10 +355,10 @@ sudo systemctl status parental-secondary-api
 
 ## Security Notes
 
-⚠️ **Important**: This setup is for **local network only**. For production/internet deployment:
+Password sign-in, CSRF protection and brute-force lockout are built in (see `auth.py`). For internet deployment also:
 
-1. Add authentication (API keys, OAuth)
-2. Use HTTPS/TLS encryption
+1. Use HTTPS/TLS encryption (reverse proxy) and set `TRUST_PROXY=true`, `COOKIE_SECURE=true`
+2. Prefer `DASHBOARD_PASSWORD_HASH` over a plain password
 3. Validate all input data
 4. Add rate limiting
 5. Use proper firewall rules
