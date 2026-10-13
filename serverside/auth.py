@@ -280,6 +280,10 @@ class Auth:
         return response
 
     # ------------------------------------------------------------------ views
+    def _lang(self):
+        """Language chosen with the dashboard's TR/EN button (pcv2_lang cookie)."""
+        return "tr" if request.cookies.get("pcv2_lang") == "tr" else "en"
+
     def _login_page(self, error="", status=200):
         with open(os.path.join(SERVERSIDE_DIR, "login.html"), "r", encoding="utf-8") as f:
             html = f.read()
@@ -298,12 +302,17 @@ class Auth:
         wait = self._lockout_remaining(ip)
         if wait:
             minutes, seconds = divmod(wait, 60)
-            msg = f"Too many wrong attempts. Try again in {minutes}m {seconds:02d}s." if minutes else f"Too many wrong attempts. Try again in {seconds}s."
+            if self._lang() == "tr":
+                left = f"{minutes} dk {seconds:02d} sn" if minutes else f"{seconds} sn"
+                msg = f"Çok fazla yanlış deneme. {left} sonra tekrar deneyin."
+            else:
+                left = f"{minutes}m {seconds:02d}s" if minutes else f"{seconds}s"
+                msg = f"Too many wrong attempts. Try again in {left}."
             return self._login_page(msg, 429)
 
         if not self._check_password(request.form.get("password", "")):
             self._record_failure(ip)
-            return self._login_page("Wrong password.", 401)
+            return self._login_page("Yanlış şifre." if self._lang() == "tr" else "Wrong password.", 401)
 
         self._clear_failures(ip)
         token = self._create_session()

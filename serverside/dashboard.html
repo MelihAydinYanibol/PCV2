@@ -163,6 +163,7 @@ button, a, label, [data-action], [data-quick], [data-tab] { -webkit-tap-highligh
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
 .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn { position: relative; }
+.lang-btn { font-weight: 750; font-size: .78rem; letter-spacing: .03em; }
 #themeBtn .i-sun { display: none; }
 #themeBtn.is-dark .i-sun { display: block; }
 #themeBtn.is-dark .i-moon { display: none; }
@@ -632,7 +633,8 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
     .conn { padding: 0; width: 30px; height: 30px; justify-content: center; flex: 0 0 auto; }
     .conn .short { display: none; }
     .conn .dot { width: 10px; height: 10px; }
-    .icon-btn { width: 38px; height: 38px; }
+    .icon-btn { width: 36px; height: 36px; }
+    .brand { display: none; }
     .hero-time { font-size: 1.8rem; }
     .ring { width: 88px; height: 88px; }
     .stat-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -670,6 +672,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
         <button class="icon-btn m-only" data-tab="settings" aria-label="Settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
         </button>
+        <button id="langBtn" class="icon-btn lang-btn" title="Switch to Turkish (L)" aria-label="Switch to Turkish (L)" data-no-i18n>TR</button>
         <button id="themeBtn" class="icon-btn" title="Switch to dark mode (T)" aria-label="Switch to dark mode">
             <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
             <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -749,7 +752,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
     <!-- LIMITS -->
     <section id="view-limits" class="view">
         <div class="page-head">
-            <div><h1>Time limits</h1><p>Daily allowance per application. <b>OVERALL</b> limits the whole computer.</p></div>
+            <div><h1>Time limits</h1><p data-i18n="limitsIntro">Daily allowance per application. <b>OVERALL</b> limits the whole computer.</p></div>
             <button class="btn primary" data-action="new-limit">+ Add application</button>
         </div>
         <div id="limitsTable"></div>
@@ -771,7 +774,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
     <!-- NIGHT LOCKDOWN -->
     <section id="view-lockdown" class="view">
         <div class="page-head">
-            <div><h1>Night lockdown</h1><p>The computer shuts down inside <b>blocked</b> zones unless a <b>whitelisted</b> zone covers that time. Zones may cross midnight (22:00 → 07:00).</p></div>
+            <div><h1>Night lockdown</h1><p data-i18n="lockdownIntro">The computer shuts down inside <b>blocked</b> zones unless a <b>whitelisted</b> zone covers that time. Zones may cross midnight (22:00 → 07:00).</p></div>
         </div>
         <div class="card" style="margin-bottom:14px">
             <div class="row" style="gap:22px">
@@ -823,7 +826,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
             <div class="card">
                 <div class="card-title">Dashboard</div>
                 <form id="settingsForm" class="grid" style="gap:14px">
-                    <label class="field"><span>Server API URL</span><input id="setApi" class="input mono" placeholder="http://127.0.0.1:5035/api"><span class="hint">Address of <span class="mono">secondary_api.py</span>. Leave empty (recommended) to use the server that served this page — with sign-in enabled the dashboard can only talk to its own server.</span></label>
+                    <label class="field"><span>Server API URL</span><input id="setApi" class="input mono" placeholder="http://127.0.0.1:5035/api"><span class="hint" data-i18n="apiHint">Address of <span class="mono">secondary_api.py</span>. Leave empty (recommended) to use the server that served this page — with sign-in enabled the dashboard can only talk to its own server.</span></label>
                     <div class="form-grid">
                         <label class="field"><span>Refresh every (seconds)</span><input id="setPoll" type="number" min="2" max="300" class="input"></label>
                         <label class="field"><span>Buffer a sample every (seconds)</span><input id="setBuffer" type="number" min="10" max="3600" class="input"></label>
@@ -847,7 +850,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
 
         <div class="card" style="margin-top:16px">
             <div class="row" style="justify-content:space-between">
-                <div><div class="card-title" style="margin-bottom:2px">Account</div><span class="hint">You are signed in on this device. The password is set in <span class="mono">serverside/.env</span>.</span></div>
+                <div><div class="card-title" style="margin-bottom:2px">Account</div><span class="hint" data-i18n="accountHint">You are signed in on this device. The password is set in <span class="mono">serverside/.env</span>.</span></div>
                 <button class="btn" data-action="sign-out">Sign out</button>
             </div>
         </div>
@@ -920,6 +923,432 @@ function getCookie(name) {
 function setCookie(name, value, days = 365) {
     document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${days * 86400}; path=/; SameSite=Lax`;
 }
+/* =====================================================================
+ * Language (English / Turkish) — one click toggles, remembered in a cookie
+ * English text is the key; TR holds the Turkish version.
+ * ===================================================================== */
+const TR = {
+    // ---- header / navigation
+    'Parental Controls': 'Ebeveyn Denetimi',
+    'Connecting…': 'Bağlanıyor…',
+    'Pending changes': 'Bekleyen değişiklikler',
+    'Settings': 'Ayarlar',
+    'Refresh now (R)': 'Şimdi yenile (R)',
+    'Refresh now': 'Şimdi yenile',
+    'Switch to dark mode': 'Koyu temaya geç',
+    'Switch to light mode': 'Açık temaya geç',
+    'Switch to dark mode (T)': 'Koyu temaya geç (T)',
+    'Overview': 'Genel bakış',
+    'Time limits': 'Süre sınırları',
+    'Exceptions': 'İstisnalar',
+    'Night lockdown': 'Gece kilidi',
+    'Usage': 'Kullanım',
+    'Queue': 'Kuyruk',
+    'Sections': 'Bölümler',
+    'Today': 'Bugün',
+    'Limits': 'Sınırlar',
+    'Lockdown': 'Kilit',
+    'Dismiss': 'Kapat',
+    // ---- overview (static)
+    'Computer time left today': 'Bugün kalan bilgisayar süresi',
+    'left': 'kaldı',
+    'Loading…': 'Yükleniyor…',
+    '+15m': '+15dk',
+    '+30m': '+30dk',
+    '+1h': '+1sa',
+    'Custom exception…': 'Özel istisna…',
+    'Today at a glance': 'Bugüne kısa bakış',
+    'Used today': 'Bugün kullanılan',
+    'Apps monitored': 'İzlenen uygulamalar',
+    'Exceptions today': 'Bugünkü istisnalar',
+    'Activity today': 'Bugünkü etkinlik',
+    'Computer on (from buffered samples)': 'Bilgisayar açık (saklanan örneklerden)',
+    'Applications': 'Uygulamalar',
+    '+ Add application': '+ Uygulama ekle',
+    "One-off adjustments to a day's limit: add time, remove time, or set an exact limit.": 'Bir günün sınırı için tek seferlik ayarlar: süre ekleyin, süre çıkarın veya kesin bir sınır belirleyin.',
+    '+ New exception': '+ Yeni istisna',
+    'Date': 'Tarih',
+    'Enable night lockdown': 'Gece kilidini aç',
+    'Different schedule per day': 'Her gün için ayrı program',
+    'You have unsaved changes': 'Kaydedilmemiş değişiklikleriniz var',
+    'Discard': 'Vazgeç',
+    'Save': 'Kaydet',
+    'How long each monitored app was used.': 'İzlenen her uygulamanın ne kadar kullanıldığı.',
+    'Last 7 days · whole computer': 'Son 7 gün · tüm bilgisayar',
+    "Changes made while the kid's computer was off. They are applied automatically when it comes back online.": 'Çocuğun bilgisayarı kapalıyken yapılan değişiklikler. Bilgisayar tekrar çevrimiçi olduğunda otomatik olarak uygulanır.',
+    'Sync now': 'Şimdi eşitle',
+    'Clear all': 'Tümünü temizle',
+    'These settings are stored in this browser only.': 'Bu ayarlar yalnızca bu tarayıcıda saklanır.',
+    'Dashboard': 'Panel',
+    'Server API URL': 'Sunucu API adresi',
+    'Refresh every (seconds)': 'Yenileme aralığı (saniye)',
+    'Buffer a sample every (seconds)': 'Örnek saklama aralığı (saniye)',
+    'Theme': 'Tema',
+    'Match system': 'Sistemle aynı',
+    'Light': 'Açık',
+    'Dark': 'Koyu',
+    'Save settings': 'Ayarları kaydet',
+    'Browser buffer': 'Tarayıcı arabelleği',
+    "The dashboard keeps the latest data and periodic usage samples in this browser, so you can still see them if the kid's computer is turned off or the server is unreachable.": 'Panel en son verileri ve düzenli kullanım örneklerini bu tarayıcıda saklar; böylece çocuğun bilgisayarı kapalıyken veya sunucuya ulaşılamadığında da görebilirsiniz.',
+    'Download buffer': 'Arabelleği indir',
+    'Clear buffer': 'Arabelleği temizle',
+    'Account': 'Hesap',
+    'Sign out': 'Çıkış yap',
+    'Configuration': 'Yapılandırma',
+    'Download': 'İndir',
+    'Upload…': 'Yükle…',
+    // ---- days
+    'Monday': 'Pazartesi', 'Tuesday': 'Salı', 'Wednesday': 'Çarşamba', 'Thursday': 'Perşembe',
+    'Friday': 'Cuma', 'Saturday': 'Cumartesi', 'Sunday': 'Pazar',
+    'Mon': 'Pzt', 'Tue': 'Sal', 'Wed': 'Çar', 'Thu': 'Per', 'Fri': 'Cum', 'Sat': 'Cmt', 'Sun': 'Paz',
+    // ---- units & relative time
+    'h': 'sa', 'm': 'dk', 's': 'sn',
+    'hours': 'saat', 'minutes': 'dakika',
+    'never': 'hiç',
+    'just now': 'az önce',
+    '{n}s ago': '{n} sn önce',
+    '{n}m ago': '{n} dk önce',
+    '{h}h {m}m ago': '{h} sa {m} dk önce',
+    '{n}d ago': '{n} gün önce',
+    // ---- generic
+    'Whole computer': 'Tüm bilgisayar',
+    'Set to {v}': 'Sabit: {v}',
+    'Cancel': 'İptal',
+    'OK': 'Tamam',
+    'Confirm': 'Onayla',
+    'Check the form': 'Formu kontrol edin',
+    'Edit': 'Düzenle',
+    'Delete': 'Sil',
+    'Delete all': 'Tümünü sil',
+    'Remove': 'Kaldır',
+    'Queued': 'Kuyrukta',
+    'Undo': 'Geri al',
+    'Application': 'Uygulama',
+    'Adjustment': 'Ayarlama',
+    'Reason': 'Neden',
+    'No limit': 'Sınır yok',
+    'None': 'Yok',
+    'Unknown': 'Bilinmiyor',
+    // ---- sign out
+    'Sign out?': 'Çıkış yapılsın mı?',
+    'You will need the dashboard password to sign in again.': 'Tekrar giriş yapmak için panel şifresine ihtiyacınız olacak.',
+    'Also delete the data buffered in this browser': 'Bu tarayıcıda saklanan verileri de sil',
+    'Recommended on a shared or borrowed device.': 'Ortak veya ödünç alınmış bir cihazda önerilir.',
+    // ---- networking / toasts
+    'Sign-in required': 'Giriş yapmanız gerekiyor',
+    'The server took too long to answer': 'Sunucu çok geç yanıt verdi',
+    'Cannot reach the server': 'Sunucuya ulaşılamıyor',
+    'Server error {n}': 'Sunucu hatası {n}',
+    'Up to date': 'Güncel',
+    "Fresh data from the kid's computer.": 'Çocuğun bilgisayarından yeni veriler alındı.',
+    "Kid's computer is offline — showing the server's cached data.": 'Çocuğun bilgisayarı çevrimdışı — sunucudaki önbellek verileri gösteriliyor.',
+    'Refresh failed': 'Yenileme başarısız',
+    '{what} queued': '{what} kuyruğa alındı',
+    "The kid's computer is offline. This will apply automatically when it comes back online.": 'Çocuğun bilgisayarı çevrimdışı. Tekrar çevrimiçi olduğunda otomatik olarak uygulanacak.',
+    '{what} saved': '{what} kaydedildi',
+    '{what} failed': '{what} başarısız',
+    'Server responded with {n}': 'Sunucu {n} koduyla yanıt verdi',
+    // ---- connection
+    "Live · kid's PC online": 'Canlı · çocuğun PC’si çevrimiçi',
+    'Live': 'Canlı',
+    "Kid's PC offline · seen {ago}": 'Çocuğun PC’si çevrimdışı · son görülme {ago}',
+    'PC off': 'PC kapalı',
+    "The kid's computer is turned off or unreachable.": 'Çocuğun bilgisayarı kapalı veya ulaşılamıyor.',
+    'Showing the last known data. Changes you make are queued and applied when it comes back online.': 'Bilinen son veriler gösteriliyor. Yaptığınız değişiklikler kuyruğa alınır ve bilgisayar tekrar çevrimiçi olduğunda uygulanır.',
+    'Showing the last known data from {t}. Changes you make are queued and applied when it comes back online.': '{t} tarihli bilinen son veriler gösteriliyor. Yaptığınız değişiklikler kuyruğa alınır ve bilgisayar tekrar çevrimiçi olduğunda uygulanır.',
+    'Server unreachable · buffered {ago}': 'Sunucuya ulaşılamıyor · saklandı {ago}',
+    'Server unreachable': 'Sunucuya ulaşılamıyor',
+    'Offline': 'Çevrimdışı',
+    'Cannot reach the server at {url}.': '{url} adresindeki sunucuya ulaşılamıyor.',
+    'Showing data buffered in this browser at {t}. Changes cannot be saved until the server is reachable.': 'Bu tarayıcıda {t} saatinde saklanan veriler gösteriliyor. Sunucuya ulaşılana kadar değişiklikler kaydedilemez.',
+    "Showing data buffered in this browser at {t} (kid's PC last seen {seen}). Changes cannot be saved until the server is reachable.": 'Bu tarayıcıda {t} saatinde saklanan veriler gösteriliyor (çocuğun PC’si en son {seen} görüldü). Sunucuya ulaşılana kadar değişiklikler kaydedilemez.',
+    'No buffered data in this browser yet. Check that secondary_api.py is running, or change the address under Settings.': 'Bu tarayıcıda henüz saklanmış veri yok. secondary_api.py’nin çalıştığını kontrol edin veya Ayarlar’dan adresi değiştirin.',
+    'Data updated {t} · refreshing every {n}s · {api}': 'Veriler {t} güncellendi · her {n} sn yenileniyor · {api}',
+    'Data from {t} · refreshing every {n}s · {api}': 'Veriler: {t} · her {n} sn yenileniyor · {api}',
+    // ---- overview (dynamic)
+    'Off': 'Kapalı',
+    'Active': 'Etkin',
+    'Active until {t}': '{t} saatine kadar etkin',
+    'No blocked zones': 'Engelli zaman yok',
+    'Day': 'Gün',
+    'Overall limit': 'Genel sınır',
+    'Effective limit': 'Geçerli sınır',
+    "Kid's PC": 'Çocuğun PC’si',
+    'Online': 'Çevrimiçi',
+    'Offline · seen {ago}': 'Çevrimdışı · son görülme {ago}',
+    'Last data': 'Son veri',
+    'from {d}': '{d} tarihinden',
+    'Used today without a limit': 'Bugün sınırsız kullanılanlar',
+    'No applications are limited yet': 'Henüz sınırlanmış uygulama yok',
+    'Add an application to start limiting its daily time.': 'Günlük süresini sınırlamak için bir uygulama ekleyin.',
+    '+{n} pending': '+{n} bekliyor',
+    'Exception: {v}': 'İstisna: {v}',
+    'Blocked today': 'Bugün engelli',
+    'No limit today': 'Bugün sınır yok',
+    'Limit {v}': 'Sınır {v}',
+    'More…': 'Diğer…',
+    '{n} sample buffered in this browser · every {s}s': 'Bu tarayıcıda {n} örnek saklandı · her {s} sn',
+    '{n} samples buffered in this browser · every {s}s': 'Bu tarayıcıda {n} örnek saklandı · her {s} sn',
+    'Samples appear here while this page is open': 'Bu sayfa açıkken örnekler burada görünür',
+    'No data available yet': 'Henüz veri yok',
+    'The dashboard will fill in as soon as the server answers.': 'Sunucu yanıt verir vermez panel dolacak.',
+    'Night lockdown is active': 'Gece kilidi etkin',
+    'Locked': 'Kilitli',
+    'Computer can be used again at {t}': 'Bilgisayar {t} saatinde tekrar kullanılabilir',
+    'No overall limit today': 'Bugün genel sınır yok',
+    'Unlimited': 'Sınırsız',
+    'Used {v} so far': 'Şimdiye kadar {v} kullanıldı',
+    'Until night lockdown': 'Gece kilidine kalan',
+    'Until the daily limit': 'Günlük sınıra kalan',
+    'Time is up': 'Süre doldu',
+    'Lockdown starts at {t}': 'Kilit {t} saatinde başlıyor',
+    '{v} left on the daily limit': 'günlük sınırda {v} kaldı',
+    'Used {a} of {b}': '{b} süreden {a} kullanıldı',
+    'lockdown at {t}': 'kilit saati {t}',
+    'Counting down': 'Geri sayım',
+    'Paused · PC offline': 'Duraklatıldı · PC çevrimdışı',
+    '{n} pending': '{n} bekliyor',
+    'No data for today yet': 'Bugün için henüz veri yok',
+    'Time up': 'Süre doldu',
+    'left · {v} on app': 'kaldı · uygulamada {v}',
+    'until PC stops': 'PC kapanana kadar',
+    'Used {v}': '{v} kullanıldı',
+    'Running now': 'Şu an çalışıyor',
+    'Not running': 'Çalışmıyor',
+    'Not used today': 'Bugün kullanılmadı',
+    // ---- limits
+    'No limits yet': 'Henüz sınır yok',
+    'Blocked': 'Engelli',
+    'Deletion queued': 'Silme kuyrukta',
+    'Edit queued': 'Düzenleme kuyrukta',
+    'Exception': 'İstisna',
+    '— means no limit for that day. A limit of 0 blocks the app for the whole day.': '— o gün için sınır olmadığı anlamına gelir. 0 sınırı uygulamayı bütün gün engeller.',
+    ' · today': ' · bugün',
+    'Daily allowance': 'Günlük izin',
+    'Copy Monday to all': 'Pazartesiyi tüm günlere kopyala',
+    'Copy Monday to weekdays': 'Pazartesiyi hafta içine kopyala',
+    'Add application limit': 'Uygulama sınırı ekle',
+    'Edit {app}': '{app} düzenle',
+    'Set how long the app may be used each day.': 'Uygulamanın her gün ne kadar kullanılabileceğini belirleyin.',
+    'Changes apply on the next check (about 5 seconds).': 'Değişiklikler bir sonraki kontrolde (yaklaşık 5 saniye) uygulanır.',
+    'Add': 'Ekle',
+    'Enter an application name.': 'Bir uygulama adı girin.',
+    '{app} already has a limit — edit it instead.': '{app} için zaten bir sınır var — onu düzenleyin.',
+    '{day}: enter a time between 0 and 24 hours.': '{day}: 0 ile 24 saat arasında bir süre girin.',
+    'Limit for {app}': '{app} sınırı',
+    'Remove {app}?': '{app} kaldırılsın mı?',
+    '{app} will no longer be limited or tracked against a limit. Usage history is kept.': '{app} artık sınırlanmayacak. Kullanım geçmişi korunur.',
+    'Removal of {app}': '{app} kaldırma işlemi',
+    // ---- exceptions
+    'Add time': 'Süre ekle',
+    'Remove time': 'Süre çıkar',
+    'Set exact limit': 'Kesin sınır belirle',
+    'Amount': 'Miktar',
+    'Reason (optional)': 'Neden (isteğe bağlı)',
+    'Homework, birthday, good grades…': 'Ödev, doğum günü, iyi notlar…',
+    'Sets the limit to <b>{v}</b> for {app} on {date}.': '{date} günü {app} için sınırı <b>{v}</b> yapar.',
+    'Adds <b>{v}</b> for {app} on {date}.': '{date} günü {app} için <b>{v}</b> ekler.',
+    'Removes <b>{v}</b> for {app} on {date}.': '{date} günü {app} için <b>{v}</b> çıkarır.',
+    '{app} has no limit today, so this adjustment changes nothing until a limit is set.': '{app} için bugün sınır yok; bir sınır belirlenene kadar bu ayar hiçbir şeyi değiştirmez.',
+    "Today's limit becomes <b>{lim}</b> → <b>{rem}</b> left (now {now}).": 'Bugünkü sınır <b>{lim}</b> olur → <b>{rem}</b> kalır (şu an {now}).',
+    'Grant an exception': 'İstisna tanı',
+    'Applies to the selected day only.': 'Yalnızca seçilen gün için geçerlidir.',
+    'Apply exception': 'İstisnayı uygula',
+    'Pick a date.': 'Bir tarih seçin.',
+    'Enter an amount greater than zero.': 'Sıfırdan büyük bir miktar girin.',
+    'Minutes must be between 0 and 59.': 'Dakika 0 ile 59 arasında olmalı.',
+    'Set {app} to {v}': '{app} sınırı {v} olarak ayarla',
+    '{v} for {app}': '{app} için {v}',
+    'Add {v} for {app}?': '{app} için {v} eklensin mi?',
+    "Today's limit for {app} will be extended by {v}.": '{app} için bugünkü sınır {v} uzatılacak.',
+    'Add {v}': '{v} ekle',
+    'Showing cached exceptions': 'Önbellekteki istisnalar gösteriliyor',
+    "The kid's computer is offline.": 'Çocuğun bilgisayarı çevrimdışı.',
+    'Could not load exceptions': 'İstisnalar yüklenemedi',
+    'No exceptions on {date}': '{date} için istisna yok',
+    'Grant extra time or set a special limit for a single day.': 'Tek bir gün için ek süre verin veya özel bir sınır belirleyin.',
+    '{app} · result': '{app} · sonuç',
+    "Today's limit": 'Bugünkü sınır',
+    'No limit configured': 'Sınır ayarlanmamış',
+    'No base limit': 'Temel sınır yok',
+    'Delete this exception?': 'Bu istisna silinsin mi?',
+    'The adjustment for {app} on {date} will be removed and the limit recalculated.': '{date} günü {app} için yapılan ayar kaldırılacak ve sınır yeniden hesaplanacak.',
+    'Exception removal': 'İstisna silme',
+    'Delete all exceptions for {app}?': '{app} için tüm istisnalar silinsin mi?',
+    'Every adjustment on {date} for {app} will be removed.': '{date} günü {app} için yapılan tüm ayarlar kaldırılacak.',
+    // ---- night lockdown
+    'Every day': 'Her gün',
+    "A lockdown change is queued and will apply when the kid's PC is online": 'Bir kilit değişikliği kuyrukta; çocuğun PC’si çevrimiçi olduğunda uygulanacak',
+    'Copy to all days': 'Tüm günlere kopyala',
+    'computer shuts down': 'bilgisayar kapanır',
+    'Whitelisted': 'İzinli',
+    'allowed even inside a blocked zone': 'engelli zaman içinde bile izin verilir',
+    'Start': 'Başlangıç',
+    'End': 'Bitiş',
+    'No blocked zones.': 'Engelli zaman yok.',
+    'No whitelisted zones.': 'İzinli zaman yok.',
+    '+ Add blocked zone': '+ Engelli zaman ekle',
+    '+ Add whitelisted zone': '+ İzinli zaman ekle',
+    'crosses midnight': 'gece yarısını geçer',
+    'Lockdown is off': 'Kilit kapalı',
+    'Active now': 'Şu an etkin',
+    'Active now · ends {t} (in {d})': 'Şu an etkin · {t} saatinde bitiyor ({d} sonra)',
+    'Next lockdown {t} · in {d}': 'Sonraki kilit {t} · {d} sonra',
+    'until {t}': '{t} saatine kadar',
+    'No blocked zones configured': 'Ayarlanmış engelli zaman yok',
+    'Preview of unsaved changes': 'Kaydedilmemiş değişikliklerin önizlemesi',
+    'Incomplete zone': 'Eksik zaman aralığı',
+    '{label}: every zone needs a start and an end time.': '{label}: her aralığın bir başlangıç ve bitiş saati olmalı.',
+    'Lockdown will start immediately': 'Kilit hemen başlayacak',
+    "The current time is inside a blocked zone. The kid's computer will shut down within about 15 seconds after saving.": 'Şu anki saat engelli bir zaman içinde. Kaydettikten sonra çocuğun bilgisayarı yaklaşık 15 saniye içinde kapanacak.',
+    'Save anyway': 'Yine de kaydet',
+    // ---- usage
+    'Could not load usage': 'Kullanım yüklenemedi',
+    'No usage recorded on {date}': '{date} için kullanım kaydı yok',
+    "Usage appears once the engine runs on the kid's computer.": 'Kullanım, motor çocuğun bilgisayarında çalışmaya başlayınca görünür.',
+    'Used': 'Kullanılan',
+    'Share': 'Pay',
+    'Limit (base)': 'Sınır (temel)',
+    'Limit': 'Sınır',
+    'reached': 'doldu',
+    // ---- queue
+    'Exception for <b>{app}</b> on {date}: {change}': '{date} günü <b>{app}</b> için istisna: {change}',
+    'set to {v}': '{v} olarak ayarla',
+    'Delete an exception for <b>{app}</b> on {date}': '{date} günü <b>{app}</b> için bir istisnayı sil',
+    'Delete all exceptions for <b>{app}</b> on {date}': '{date} günü <b>{app}</b> için tüm istisnaları sil',
+    'Add limit for <b>{app}</b>': '<b>{app}</b> için sınır ekle',
+    'Update limit for <b>{app}</b>': '<b>{app}</b> sınırını güncelle',
+    'Remove limit for <b>{app}</b>': '<b>{app}</b> sınırını kaldır',
+    'Update night lockdown (enabled)': 'Gece kilidini güncelle (açık)',
+    'Update night lockdown (disabled)': 'Gece kilidini güncelle (kapalı)',
+    'Upload full configuration': 'Tüm yapılandırmayı yükle',
+    'Nothing pending': 'Bekleyen bir şey yok',
+    "All changes have reached the kid's computer.": 'Tüm değişiklikler çocuğun bilgisayarına ulaştı.',
+    'Change': 'Değişiklik',
+    'Cancel this pending change?': 'Bu bekleyen değişiklik iptal edilsin mi?',
+    'It will be removed from the queue and never applied.': 'Kuyruktan kaldırılacak ve hiç uygulanmayacak.',
+    'Cancel change': 'Değişikliği iptal et',
+    'Pending change cancelled': 'Bekleyen değişiklik iptal edildi',
+    'Already applied': 'Zaten uygulandı',
+    "This change has already reached the kid's computer.": 'Bu değişiklik zaten çocuğun bilgisayarına ulaştı.',
+    'Could not cancel': 'İptal edilemedi',
+    'Error {n}': 'Hata {n}',
+    // ---- settings
+    'Last snapshot': 'Son anlık görüntü',
+    "Kid's PC last seen": 'Çocuğun PC’si son görülme',
+    'Usage samples': 'Kullanım örnekleri',
+    '{n} ({today} today)': '{n} (bugün {today})',
+    'Storage used': 'Kullanılan alan',
+    'Invalid file': 'Geçersiz dosya',
+    'That file is not valid JSON.': 'Bu dosya geçerli bir JSON değil.',
+    'Nothing to upload': 'Yüklenecek bir şey yok',
+    'The file needs a "limits", "exceptions" or "night_lockdown" section.': 'Dosyada "limits", "exceptions" veya "night_lockdown" bölümü olmalı.',
+    'Replace configuration?': 'Yapılandırma değiştirilsin mi?',
+    "This overwrites {parts} on the kid's computer with the contents of {file}.": 'Bu işlem çocuğun bilgisayarındaki {parts} verilerinin üzerine {file} içeriğini yazar.',
+    'Replace': 'Değiştir',
+    'Configuration upload': 'Yapılandırma yükleme',
+    'Copy {day} to every day?': '{day} tüm günlere kopyalansın mı?',
+    'All other days will get the same blocked and whitelisted zones. Nothing is saved until you press Save.': 'Diğer tüm günler aynı engelli ve izinli zamanları alacak. Kaydet’e basana kadar hiçbir şey kaydedilmez.',
+    'Copy': 'Kopyala',
+    'Sync finished': 'Eşitleme tamamlandı',
+    '{a} applied, {b} failed.': '{a} uygulandı, {b} başarısız.',
+    'Sync failed': 'Eşitleme başarısız',
+    'Discard all pending changes?': 'Tüm bekleyen değişiklikler silinsin mi?',
+    'Every queued change will be deleted and never applied. This cannot be undone.': 'Kuyruktaki tüm değişiklikler silinecek ve hiç uygulanmayacak. Bu işlem geri alınamaz.',
+    'Discard all': 'Tümünü sil',
+    'Queue cleared': 'Kuyruk temizlendi',
+    'Could not clear queue': 'Kuyruk temizlenemedi',
+    'No configuration loaded yet': 'Henüz yapılandırma yüklenmedi',
+    'Configuration downloaded': 'Yapılandırma indirildi',
+    'Clear the browser buffer?': 'Tarayıcı arabelleği temizlensin mi?',
+    "Buffered snapshots and usage samples stored in this browser will be deleted. Nothing on the kid's computer changes.": 'Bu tarayıcıda saklanan anlık görüntüler ve kullanım örnekleri silinecek. Çocuğun bilgisayarında hiçbir şey değişmez.',
+    'Clear': 'Temizle',
+    'Browser buffer cleared': 'Tarayıcı arabelleği temizlendi',
+    'Changes discarded': 'Değişiklikler geri alındı',
+    'Invalid address': 'Geçersiz adres',
+    'The API URL must start with http:// or https://': 'API adresi http:// veya https:// ile başlamalı',
+    'Settings saved': 'Ayarlar kaydedildi',
+    // ---- language button
+    'Türkçe': 'Türkçe',
+    'Switch to Turkish (L)': 'Türkçeye geç (L)',
+    'Switch to English (L)': 'İngilizceye geç (L)',
+};
+
+// Static elements with inline markup are translated as a whole (data-i18n="key")
+const TR_HTML = {
+    limitsIntro: 'Uygulama başına günlük izin. <b>OVERALL</b> tüm bilgisayarı sınırlar.',
+    lockdownIntro: 'Bilgisayar, <b>izinli</b> bir zaman o saati kapsamadıkça <b>engelli</b> zamanlarda kapanır. Aralıklar gece yarısını geçebilir (22:00 → 07:00).',
+    apiHint: '<span class="mono">secondary_api.py</span> adresi. Bu sayfayı sunan sunucuyu kullanmak için boş bırakın (önerilir) — giriş açıkken panel yalnızca kendi sunucusuyla konuşabilir.',
+    accountHint: 'Bu cihazda giriş yaptınız. Şifre <span class="mono">serverside/.env</span> dosyasında ayarlanır.',
+    noLimitsHint: 'Bir uygulama ekleyin — veya tüm bilgisayar için <span class="mono">OVERALL</span>.',
+    processHint: 'Windows’un gösterdiği şekliyle işlem adı (büyük/küçük harf duyarlı) veya toplam bilgisayar süresi için <span class="mono">OVERALL</span>.',
+};
+
+const LANG_COOKIE = 'pcv2_lang';
+let LANG = (() => {
+    const c = getCookie(LANG_COOKIE);
+    if (c === 'tr' || c === 'en') return c;
+    return (navigator.language || '').toLowerCase().startsWith('tr') ? 'tr' : 'en';
+})();
+// t('Used {a} of {b}', { a, b }) -> translated text with the values filled in
+function t(key, vars) {
+    let str = (LANG === 'tr' && TR[key] !== undefined) ? TR[key] : key;
+    if (vars) str = str.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+    return str;
+}
+const locale = () => (LANG === 'tr' ? 'tr-TR' : []);
+
+// Static page text: remember the English original of every text node / attribute once,
+// so switching back and forth never loses it.
+const _static = [];
+function collectStatic() {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode(n) {
+            const p = n.parentElement;
+            if (!p || p.closest('script, style, svg, [data-i18n], [data-no-i18n], #dlg, #toasts')) return NodeFilter.FILTER_REJECT;
+            return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        },
+    });
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const key = n.nodeValue.trim().replace(/\s+/g, ' ');
+        if (TR[key] !== undefined) _static.push({ node: n, key, raw: n.nodeValue });
+    }
+    document.querySelectorAll('[placeholder], [title], [aria-label]').forEach(el => {
+        if (el.closest('#dlg, #toasts, [data-no-i18n]')) return;
+        for (const attr of ['placeholder', 'title', 'aria-label']) {
+            const v = el.getAttribute(attr);
+            if (v && TR[v] !== undefined) _static.push({ el, attr, key: v });
+        }
+    });
+    document.querySelectorAll('[data-i18n]').forEach(el => _static.push({ el, html: el.dataset.i18n, en: el.innerHTML }));
+}
+function applyStatic() {
+    for (const s of _static) {
+        if (s.html) s.el.innerHTML = LANG === 'tr' && TR_HTML[s.html] ? TR_HTML[s.html] : s.en;
+        else if (s.attr) s.el.setAttribute(s.attr, t(s.key));
+        else s.node.nodeValue = s.raw.replace(s.raw.trim(), t(s.key));
+    }
+    document.documentElement.lang = LANG;
+    document.title = t('Parental Controls');
+    const b = document.getElementById('langBtn');
+    if (b) {
+        b.textContent = LANG === 'tr' ? 'EN' : 'TR';
+        const label = LANG === 'tr' ? t('Switch to English (L)') : t('Switch to Turkish (L)');
+        b.title = label;
+        b.setAttribute('aria-label', label);
+    }
+}
+function setLang(lang) {
+    LANG = lang;
+    setCookie(LANG_COOKIE, lang);
+    applyStatic();
+    applyTheme();
+    S.rendered = {};
+    renderAll();
+    if (S.tab === 'usage') renderUsage();
+    if (S.tab === 'exceptions') renderExceptions(true);
+}
+
 const cookieTheme = getCookie(THEME_COOKIE);
 if (['light', 'dark', 'auto'].includes(cookieTheme)) settings.theme = cookieTheme;
 
@@ -945,7 +1374,7 @@ function applyTheme() {
     const btn = document.getElementById('themeBtn');
     if (btn) {
         const dark = effectiveTheme() === 'dark';
-        const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+        const label = dark ? t('Switch to light mode') : t('Switch to dark mode');
         btn.classList.toggle('is-dark', dark);
         btn.title = `${label} (T)`;
         btn.setAttribute('aria-label', label);
@@ -1007,9 +1436,10 @@ function fmtDur(sec, { seconds = false } = {}) {
     const h = Math.floor(s / 3600); s -= h * 3600;
     const m = Math.floor(s / 60); s -= m * 60;
     let out;
-    if (h > 0) out = seconds ? `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s` : `${h}h ${String(m).padStart(2, '0')}m`;
-    else if (m > 0) out = (seconds || m < 10) && s ? `${m}m ${String(s).padStart(2, '0')}s` : `${m}m`;
-    else out = `${s}s`;
+    const H = t('h'), M = t('m'), Sx = t('s');
+    if (h > 0) out = seconds ? `${h}${H} ${String(m).padStart(2, '0')}${M} ${String(s).padStart(2, '0')}${Sx}` : `${h}${H} ${String(m).padStart(2, '0')}${M}`;
+    else if (m > 0) out = (seconds || m < 10) && s ? `${m}${M} ${String(s).padStart(2, '0')}${Sx}` : `${m}${M}`;
+    else out = `${s}${Sx}`;
     return (neg ? '-' : '') + out;
 }
 function fmtClock(sec) {
@@ -1019,21 +1449,21 @@ function fmtClock(sec) {
     return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
 }
 function fmtAgo(ms) {
-    if (!ms) return 'never';
+    if (!ms) return t('never');
     const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
-    if (s < 10) return 'just now';
-    if (s < 60) return `${s}s ago`;
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m ago`;
-    return `${Math.floor(s / 86400)}d ago`;
+    if (s < 10) return t('just now');
+    if (s < 60) return t('{n}s ago', { n: s });
+    if (s < 3600) return t('{n}m ago', { n: Math.floor(s / 60) });
+    if (s < 86400) return t('{h}h {m}m ago', { h: Math.floor(s / 3600), m: Math.floor((s % 3600) / 60) });
+    return t('{n}d ago', { n: Math.floor(s / 86400) });
 }
 function fmtTime(ms) {
     const d = new Date(ms);
     const sameDay = localDate(d) === localDate();
-    return (sameDay ? '' : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ') +
-        d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (sameDay ? '' : d.toLocaleDateString(locale(), { month: 'short', day: 'numeric' }) + ' ') +
+        d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 }
-function appLabel(name) { return name === 'OVERALL' ? 'Whole computer' : name; }
+function appLabel(name) { return name === 'OVERALL' ? t('Whole computer') : name; }
 function appInitial(name) {
     if (name === 'OVERALL') return '◎';
     return esc((name || '?').replace(/\.exe$/i, '').charAt(0).toUpperCase());
@@ -1041,7 +1471,7 @@ function appInitial(name) {
 function signed(sec) { return `${sec >= 0 ? '+' : '-'}${fmtDur(Math.abs(sec))}`; }
 // Short text for the exceptions applied to a limit, e.g. "Set to 40m +15m" or "+30m"
 function excSummary(lim) {
-    if (lim.setTo !== null) return `Set to ${fmtDur(lim.setTo)}${lim.added ? ' ' + signed(lim.added) : ''}`;
+    if (lim.setTo !== null) return t('Set to {v}', { v: fmtDur(lim.setTo) }) + (lim.added ? ' ' + signed(lim.added) : '');
     return lim.added ? signed(lim.added) : '';
 }
 function levelFor(remaining, limit) {
@@ -1220,9 +1650,9 @@ function goToLogin() {
 
 async function signOut() {
     const r = await openDialog({
-        title: 'Sign out?', subtitle: 'You will need the dashboard password to sign in again.', icon: 'question',
-        body: '<label class="check"><input type="checkbox" name="wipe" checked> Also delete the data buffered in this browser</label><p class="hint" style="margin-top:6px">Recommended on a shared or borrowed device.</p>',
-        actions: [{ label: 'Cancel', value: null, kind: 'ghost' }, { label: 'Sign out', value: 'out', kind: 'primary', submit: true }],
+        title: t('Sign out?'), subtitle: t('You will need the dashboard password to sign in again.'), icon: 'question',
+        body: `<label class="check"><input type="checkbox" name="wipe" checked> ${t('Also delete the data buffered in this browser')}</label><p class="hint" style="margin-top:6px">${t('Recommended on a shared or borrowed device.')}</p>`,
+        actions: [{ label: t('Cancel'), value: null, kind: 'ghost' }, { label: t('Sign out'), value: 'out', kind: 'primary', submit: true }],
     });
     if (r.value !== 'out') return;
     if (r.form.wipe.checked) {
@@ -1250,12 +1680,15 @@ async function api(path, { method = 'GET', body, timeout = REQUEST_TIMEOUT } = {
         if (res.status === 401 && json && json.auth === 'required') {
             // Session expired or signed out elsewhere: go to the sign-in page and come back here afterwards
             goToLogin();
-            throw new Error('Sign-in required');
+            const err = new Error(t('Sign-in required'));
+            err.auth = true;
+            throw err;
         }
         return { ok: res.ok, status: res.status, json: json || {} };
     } catch (e) {
-        if (e.name === 'AbortError') throw new Error('The server took too long to answer');
-        throw new Error('Cannot reach the server');
+        if (e.auth) throw e;
+        if (e.name === 'AbortError') throw new Error(t('The server took too long to answer'));
+        throw new Error(t('Cannot reach the server'));
     } finally {
         clearTimeout(timer);
     }
@@ -1268,14 +1701,14 @@ function refresh({ manual = false } = {}) {
     S.inflight = (async () => {
         try {
             const r = await api('/dashboard/data');
-            if (!r.ok || r.json.status !== 'success' || !r.json.data) throw new Error(r.json.message || `Server error ${r.status}`);
+            if (!r.ok || r.json.status !== 'success' || !r.json.data) throw new Error(r.json.message || t('Server error {n}', { n: r.status }));
             const d = r.json.data;
             const primaryOnline = d.server && d.server.primary_api === 'online';
             ingest(d, primaryOnline ? 'live' : 'cache');
-            if (manual) toast('success', 'Up to date', primaryOnline ? "Fresh data from the kid's computer." : "Kid's computer is offline — showing the server's cached data.");
+            if (manual) toast('success', t('Up to date'), primaryOnline ? t("Fresh data from the kid's computer.") : t("Kid's computer is offline — showing the server's cached data."));
         } catch (err) {
             fallbackToBuffer(err);
-            if (manual) toast('error', 'Refresh failed', err.message);
+            if (manual) toast('error', t('Refresh failed'), err.message);
         } finally {
             btn.classList.remove('spinning');
             S.inflight = null;
@@ -1396,7 +1829,7 @@ function toast(type, title, message = '', ms) {
     el.innerHTML = `
         <svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${TOAST_ICONS[type] || TOAST_ICONS.info}</svg>
         <div class="tb"><div class="tt">${esc(title)}</div>${message ? `<div class="tm">${esc(message)}</div>` : ''}</div>
-        <button class="tx" aria-label="Dismiss"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <button class="tx" aria-label="${t('Dismiss')}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
         <div class="tp" style="animation-duration:${dur}ms"></div>`;
     let timer;
     const close = () => { clearTimeout(timer); el.classList.add('out'); setTimeout(() => el.remove(), 200); };
@@ -1444,7 +1877,7 @@ const DLG_ICONS = {
 function openDialog(opts) {
     const dlg = $('#dlg');
     return new Promise(resolve => {
-        const actions = opts.actions || [{ label: 'OK', value: 'ok', kind: 'primary', submit: true }];
+        const actions = opts.actions || [{ label: t('OK'), value: 'ok', kind: 'primary', submit: true }];
         dlg.className = 'dlg' + (opts.wide ? ' wide' : '');
         dlg.innerHTML = `
             <form method="dialog" novalidate style="display:contents">
@@ -1477,7 +1910,7 @@ function openDialog(opts) {
                 const a = actions[+b.dataset.i];
                 if (a.submit && opts.validate) {
                     const msg = opts.validate(form);
-                    if (msg) { toast('error', 'Check the form', msg); return; }
+                    if (msg) { toast('error', t('Check the form'), msg); return; }
                 }
                 finish(a.value);
             });
@@ -1488,7 +1921,7 @@ function openDialog(opts) {
             if (!a) return;
             if (opts.validate) {
                 const msg = opts.validate(form);
-                if (msg) { toast('error', 'Check the form', msg); return; }
+                if (msg) { toast('error', t('Check the form'), msg); return; }
             }
             finish(a.value);
         });
@@ -1521,10 +1954,10 @@ function openDialog(opts) {
     });
 }
 
-async function confirmDialog(title, message, { okLabel = 'Confirm', danger = false, icon } = {}) {
+async function confirmDialog(title, message, { okLabel = t('Confirm'), danger = false, icon } = {}) {
     const r = await openDialog({
         title, subtitle: esc(message), icon: icon || (danger ? 'danger' : 'question'), tone: danger ? 'danger' : '',
-        actions: [{ label: 'Cancel', value: false, kind: 'ghost' }, { label: okLabel, value: true, kind: danger ? 'danger' : 'primary', submit: true }],
+        actions: [{ label: t('Cancel'), value: false, kind: 'ghost' }, { label: okLabel, value: true, kind: danger ? 'danger' : 'primary', submit: true }],
     });
     return r.value === true;
 }
@@ -1536,18 +1969,19 @@ async function mutate(method, path, body, { what, after } = {}) {
     try {
         const r = await api(path, { method, body });
         if (r.status === 202) {
-            toast('warning', `${what} queued`, "The kid's computer is offline. This will apply automatically when it comes back online.");
+            toast('warning', t('{what} queued', { what }), t("The kid's computer is offline. This will apply automatically when it comes back online."));
         } else if (r.ok) {
-            toast('success', `${what} saved`, r.json.message || '');
+            // The API's own messages are English only
+            toast('success', t('{what} saved', { what }), LANG === 'en' ? (r.json.message || '') : '');
         } else {
-            toast('error', `${what} failed`, r.json.message || `Server responded with ${r.status}`);
+            toast('error', t('{what} failed', { what }), r.json.message || t('Server responded with {n}', { n: r.status }));
             return false;
         }
         if (after) after(r);
         refresh();
         return r;
     } catch (e) {
-        toast('error', `${what} failed`, e.message);
+        toast('error', t('{what} failed', { what }), e.message);
         return false;
     }
 }
@@ -1590,31 +2024,35 @@ function renderConnection() {
     const seen = lastSeenMs();
     if (S.source === 'live') {
         conn.classList.add('live');
-        text.textContent = "Live · kid's PC online";
-        short = 'Live';
+        text.textContent = t("Live · kid's PC online");
+        short = t('Live');
     } else if (S.source === 'cache') {
         conn.classList.add('cache');
-        text.textContent = `Kid's PC offline · seen ${fmtAgo(seen)}`;
-        short = 'PC off';
+        text.textContent = t("Kid's PC offline · seen {ago}", { ago: fmtAgo(seen) });
+        short = t('PC off');
         banner.classList.add('show', 'cache');
-        $('#bannerTitle').textContent = "The kid's computer is turned off or unreachable.";
-        $('#bannerText').textContent = `Showing the last known data${seen ? ` from ${fmtTime(seen)}` : ''}. Changes you make are queued and applied when it comes back online.`;
+        $('#bannerTitle').textContent = t("The kid's computer is turned off or unreachable.");
+        $('#bannerText').textContent = seen
+            ? t('Showing the last known data from {t}. Changes you make are queued and applied when it comes back online.', { t: fmtTime(seen) })
+            : t('Showing the last known data. Changes you make are queued and applied when it comes back online.');
     } else if (S.source === 'buffer') {
         conn.classList.add('buffer');
         if (S.booting && S.data) {
-            text.textContent = 'Connecting…';
+            text.textContent = t('Connecting…');
             conn.className = 'conn';
         } else {
-            text.textContent = S.data ? `Server unreachable · buffered ${fmtAgo(S.bufferSavedAt)}` : 'Server unreachable';
-            short = 'Offline';
+            text.textContent = S.data ? t('Server unreachable · buffered {ago}', { ago: fmtAgo(S.bufferSavedAt) }) : t('Server unreachable');
+            short = t('Offline');
             banner.classList.add('show', 'buffer');
-            $('#bannerTitle').textContent = `Cannot reach the server at ${apiBase()}.`;
+            $('#bannerTitle').textContent = t('Cannot reach the server at {url}.', { url: apiBase() });
             $('#bannerText').textContent = S.data
-                ? `Showing data buffered in this browser at ${fmtTime(S.bufferSavedAt)}${seen ? ` (kid's PC last seen ${fmtTime(seen)})` : ''}. Changes cannot be saved until the server is reachable.`
-                : 'No buffered data in this browser yet. Check that secondary_api.py is running, or change the address under Settings.';
+                ? (seen
+                    ? t("Showing data buffered in this browser at {t} (kid's PC last seen {seen}). Changes cannot be saved until the server is reachable.", { t: fmtTime(S.bufferSavedAt), seen: fmtTime(seen) })
+                    : t('Showing data buffered in this browser at {t}. Changes cannot be saved until the server is reachable.', { t: fmtTime(S.bufferSavedAt) }))
+                : t('No buffered data in this browser yet. Check that secondary_api.py is running, or change the address under Settings.');
         }
     } else {
-        text.textContent = 'Connecting…';
+        text.textContent = t('Connecting…');
     }
     const qn = ((S.data && S.data.queue) || []).length;
     const qc = $('#queueCount');
@@ -1625,7 +2063,9 @@ function renderConnection() {
     qb.hidden = !qn;
     qb.textContent = qn;
     $('#footNote').textContent = S.data
-        ? `Data ${S.source === 'live' ? 'updated' : 'from'} ${S.source === 'live' ? fmtAgo(S.receivedAt) : fmtTime(S.source === 'buffer' ? (S.bufferSavedAt || seen) : (seen || S.receivedAt))} · refreshing every ${settings.pollSec}s · ${apiBase()}`
+        ? (S.source === 'live'
+            ? t('Data updated {t} · refreshing every {n}s · {api}', { t: fmtAgo(S.receivedAt), n: settings.pollSec, api: apiBase() })
+            : t('Data from {t} · refreshing every {n}s · {api}', { t: fmtTime(S.source === 'buffer' ? (S.bufferSavedAt || seen) : (seen || S.receivedAt)), n: settings.pollSec, api: apiBase() }))
         : apiBase();
 }
 
@@ -1643,29 +2083,29 @@ function renderOverview() {
     $('#statQueue').textContent = (d.queue || []).length;
 
     const lk = m.lockdown;
-    let lockTxt = 'Off';
+    let lockTxt = t('Off');
     if (lk) {
-        if (lk.activeNow) lockTxt = `Active${lk.endsAt ? ' until ' + fmtTime(lk.endsAt) : ''}`;
+        if (lk.activeNow) lockTxt = lk.endsAt ? t('Active until {t}', { t: fmtTime(lk.endsAt) }) : t('Active');
         else if (lk.startsAt) lockTxt = `${fmtTime(lk.startsAt)} → ${lk.endsAt ? fmtTime(lk.endsAt) : '…'}`;
-        else lockTxt = 'No blocked zones';
+        else lockTxt = t('No blocked zones');
     }
     const ov = m.overall;
     const glance = [
-        ['Day', `${m.dayName}, ${m.today}`],
-        ['Overall limit', ov.unlimited ? 'No limit' : fmtDur(ov.configured ?? ov.base)],
-        ['Exceptions', excSummary(ov) || 'None'],
-        ['Effective limit', ov.unlimited ? 'No limit' : fmtDur(ov.effective)],
-        ['Night lockdown', lockTxt],
-        ["Kid's PC", S.source === 'live' ? 'Online' : `Offline · seen ${fmtAgo(lastSeenMs())}`],
+        [t('Day'), `${t(m.dayName)}, ${m.today}`],
+        [t('Overall limit'), ov.unlimited ? t('No limit') : fmtDur(ov.configured ?? ov.base)],
+        [t('Exceptions'), excSummary(ov) || t('None')],
+        [t('Effective limit'), ov.unlimited ? t('No limit') : fmtDur(ov.effective)],
+        [t('Night lockdown'), lockTxt],
+        [t("Kid's PC"), S.source === 'live' ? t('Online') : t('Offline · seen {ago}', { ago: fmtAgo(lastSeenMs()) })],
     ];
-    if (!m.sameDay) glance.push(['Last data', `from ${dataDate()}`]);
+    if (!m.sameDay) glance.push([t('Last data'), t('from {d}', { d: dataDate() })]);
     $('#glance').innerHTML = glance.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
 
     renderOnce('apps', sig + JSON.stringify(m.extra.map(n => [n, m.usage[n]])), () => {
         const cards = m.apps.map(a => appCardHtml(a)).join('');
         const extra = m.extra.length
-            ? `<div class="card" style="grid-column:1/-1"><div class="card-title">Used today without a limit</div><div class="chips">${m.extra.map(n => `<span class="chip">${esc(n)} · ${fmtDur(m.usage[n])}</span>`).join('')}</div></div>` : '';
-        $('#appCards').innerHTML = cards || `<div class="card empty" style="grid-column:1/-1"><b>No applications are limited yet</b>Add an application to start limiting its daily time.<div style="margin-top:12px"><button class="btn primary" data-action="new-limit">+ Add application</button></div></div>`;
+            ? `<div class="card" style="grid-column:1/-1"><div class="card-title">${t('Used today without a limit')}</div><div class="chips">${m.extra.map(n => `<span class="chip">${esc(n)} · ${fmtDur(m.usage[n])}</span>`).join('')}</div></div>` : '';
+        $('#appCards').innerHTML = cards || `<div class="card empty" style="grid-column:1/-1"><b>${t('No applications are limited yet')}</b>${t('Add an application to start limiting its daily time.')}<div style="margin-top:12px"><button class="btn primary" data-action="new-limit">${t('+ Add application')}</button></div></div>`;
         if (extra) $('#appCards').insertAdjacentHTML('beforeend', extra);
     });
 
@@ -1674,9 +2114,9 @@ function renderOverview() {
 
 function appCardHtml(a) {
     const n = esc(a.name);
-    const pend = a.pending.length ? `<span class="chip info">+${a.pending.length} pending</span>` : '';
-    const exc = excSummary(a) ? `<span class="chip accent">Exception: ${excSummary(a)}</span>` : '';
-    const zero = !a.unlimited && a.effective <= 0 ? '<span class="chip danger">Blocked today</span>' : '';
+    const pend = a.pending.length ? `<span class="chip info">${t('+{n} pending', { n: a.pending.length })}</span>` : '';
+    const exc = excSummary(a) ? `<span class="chip accent">${t('Exception: {v}', { v: excSummary(a) })}</span>` : '';
+    const zero = !a.unlimited && a.effective <= 0 ? `<span class="chip danger">${t('Blocked today')}</span>` : '';
     return `
     <div class="card app-card" data-app-card="${n}">
         <div class="app-head">
@@ -1685,18 +2125,18 @@ function appCardHtml(a) {
                 <div class="app-name" title="${n}">${n}</div>
                 <div class="app-meta" data-live-meta="${n}"></div>
             </div>
-            <div class="app-remaining" data-live-rem="${n}"><div class="t num">–</div><div class="l">left</div></div>
+            <div class="app-remaining" data-live-rem="${n}"><div class="t num">–</div><div class="l">${t('left')}</div></div>
         </div>
         <div class="bar" data-live-bar="${n}"><i style="width:0"></i></div>
-        <div class="bar-legend"><span data-live-used="${n}"></span><span>${a.unlimited ? 'No limit today' : 'Limit ' + fmtDur(a.effective)}</span></div>
+        <div class="bar-legend"><span data-live-used="${n}"></span><span>${a.unlimited ? t('No limit today') : t('Limit {v}', { v: fmtDur(a.effective) })}</span></div>
         <div class="chips" style="margin-top:0">${exc}${pend}${zero}</div>
         <div class="quick">
-            <button class="btn soft sm" data-quick="${n}" data-secs="900">+15m</button>
-            <button class="btn soft sm" data-quick="${n}" data-secs="1800">+30m</button>
-            <button class="btn soft sm" data-quick="${n}" data-secs="3600">+1h</button>
+            <button class="btn soft sm" data-quick="${n}" data-secs="900">${t('+15m')}</button>
+            <button class="btn soft sm" data-quick="${n}" data-secs="1800">${t('+30m')}</button>
+            <button class="btn soft sm" data-quick="${n}" data-secs="3600">${t('+1h')}</button>
             <span class="spacer"></span>
-            <button class="btn ghost sm" data-action="exception" data-app="${n}">More…</button>
-            <button class="btn ghost sm" data-action="edit-limit" data-app="${n}">Edit</button>
+            <button class="btn ghost sm" data-action="exception" data-app="${n}">${t('More…')}</button>
+            <button class="btn ghost sm" data-action="edit-limit" data-app="${n}">${t('Edit')}</button>
         </div>
     </div>`;
 }
@@ -1736,17 +2176,17 @@ function renderActivity(m) {
     if (localDate() === today) html += `<div class="now" style="left:${pct(Date.now())}%"></div>`;
     tl.innerHTML = html;
     $('#activityHint').textContent = samples.length
-        ? `${samples.length} sample${samples.length === 1 ? "" : "s"} buffered in this browser · every ${settings.bufferSec}s`
-        : 'Samples appear here while this page is open';
+        ? t(samples.length === 1 ? '{n} sample buffered in this browser · every {s}s' : '{n} samples buffered in this browser · every {s}s', { n: samples.length, s: settings.bufferSec })
+        : t('Samples appear here while this page is open');
 }
 
 /* ---------- Live tick (every second) ---------- */
 function tick() {
     if (!S.data) {
         if (S.source === 'buffer') {
-            $('#heroLabel').textContent = 'No data available yet';
+            $('#heroLabel').textContent = t('No data available yet');
             $('#heroTime').textContent = '—';
-            $('#heroSub').textContent = 'The dashboard will fill in as soon as the server answers.';
+            $('#heroSub').textContent = t('The dashboard will fill in as soon as the server answers.');
         }
         return;
     }
@@ -1758,22 +2198,22 @@ function tick() {
     let label, sub = '', chips = [];
     const rem = m.pcRemaining;
     if (m.pcReason === 'lockdown-active') {
-        label = 'Night lockdown is active';
-        heroTime.textContent = 'Locked';
-        sub = m.lockdown.endsAt ? `Computer can be used again at ${fmtTime(m.lockdown.endsAt)}` : '';
+        label = t('Night lockdown is active');
+        heroTime.textContent = t('Locked');
+        sub = m.lockdown.endsAt ? t('Computer can be used again at {t}', { t: fmtTime(m.lockdown.endsAt) }) : '';
     } else if (rem === Infinity) {
-        label = 'No overall limit today';
-        heroTime.textContent = 'Unlimited';
-        sub = `Used ${fmtDur(ov.used)} so far`;
+        label = t('No overall limit today');
+        heroTime.textContent = t('Unlimited');
+        sub = t('Used {v} so far', { v: fmtDur(ov.used) });
     } else {
-        label = m.pcReason === 'lockdown' ? 'Until night lockdown' : 'Until the daily limit';
-        heroTime.textContent = rem <= 0 ? 'Time is up' : fmtClock(rem);
+        label = m.pcReason === 'lockdown' ? t('Until night lockdown') : t('Until the daily limit');
+        heroTime.textContent = rem <= 0 ? t('Time is up') : fmtClock(rem);
         if (m.pcReason === 'lockdown') {
-            sub = `Lockdown starts at ${fmtTime(m.lockdown.startsAt)}`;
-            if (!ov.unlimited) sub += ` · ${fmtDur(ov.remaining)} left on the daily limit`;
+            sub = t('Lockdown starts at {t}', { t: fmtTime(m.lockdown.startsAt) });
+            if (!ov.unlimited) sub += ' · ' + t('{v} left on the daily limit', { v: fmtDur(ov.remaining) });
         } else {
-            sub = `Used ${fmtDur(ov.used)} of ${fmtDur(ov.effective)}`;
-            if (m.lockdown && m.lockdown.startsAt) sub += ` · lockdown at ${fmtTime(m.lockdown.startsAt)}`;
+            sub = t('Used {a} of {b}', { a: fmtDur(ov.used), b: fmtDur(ov.effective) });
+            if (m.lockdown && m.lockdown.startsAt) sub += ' · ' + t('lockdown at {t}', { t: fmtTime(m.lockdown.startsAt) });
         }
     }
     const lvl = rem === Infinity ? 'ok' : levelFor(rem, ov.unlimited ? 0 : ov.effective);
@@ -1790,14 +2230,14 @@ function tick() {
     ring.className = 'ring ' + (lvl || '');
     $('#heroPct').textContent = rem === Infinity ? '∞' : `${Math.round(frac * 100)}%`;
 
-    if (S.source === 'live' && ov.active) chips.push('<span class="chip ok"><span class="live-dot"></span>Counting down</span>');
-    else if (S.source !== 'live') chips.push('<span class="chip warn">Paused · PC offline</span>');
-    if (excSummary(ov)) chips.push(`<span class="chip accent">Exception: ${excSummary(ov)}</span>`);
+    if (S.source === 'live' && ov.active) chips.push(`<span class="chip ok"><span class="live-dot"></span>${t('Counting down')}</span>`);
+    else if (S.source !== 'live') chips.push(`<span class="chip warn">${t('Paused · PC offline')}</span>`);
+    if (excSummary(ov)) chips.push(`<span class="chip accent">${t('Exception: {v}', { v: excSummary(ov) })}</span>`);
     if (ov.pending.length) {
         const sum = ov.pending.reduce((s, p) => s + (classifyEntry(p.data.exception_time).kind === 'add' ? Number(p.data.exception_time) : 0), 0);
-        chips.push(`<span class="chip info">${ov.pending.length} pending${sum ? ` (${sum > 0 ? '+' : ''}${fmtDur(sum)})` : ''}</span>`);
+        chips.push(`<span class="chip info">${t('{n} pending', { n: ov.pending.length })}${sum ? ` (${sum > 0 ? '+' : ''}${fmtDur(sum)})` : ''}</span>`);
     }
-    if (!m.sameDay) chips.push(`<span class="chip">No data for today yet</span>`);
+    if (!m.sameDay) chips.push(`<span class="chip">${t('No data for today yet')}</span>`);
     const chipsHtml = chips.join('');
     if ($('#heroChips').innerHTML !== chipsHtml) $('#heroChips').innerHTML = chipsHtml;
     $('#statUsed').textContent = fmtDur(ov.used);
@@ -1811,15 +2251,15 @@ function tick() {
         const shown = a.effectiveRemaining;
         const l = shown === Infinity ? '' : levelFor(shown, a.unlimited ? 0 : a.effective);
         remEl.className = 'app-remaining ' + l;
-        remEl.querySelector('.t').textContent = shown === Infinity ? 'No limit' : shown <= 0 ? (m.pcReason === 'lockdown-active' ? 'Locked' : 'Time up') : fmtDur(shown, { seconds: shown < 3600 });
-        remEl.querySelector('.l').textContent = a.cappedByPc && own !== Infinity ? `left · ${fmtDur(own)} on app` : a.cappedByPc ? 'until PC stops' : 'left';
+        remEl.querySelector('.t').textContent = shown === Infinity ? t('No limit') : shown <= 0 ? (m.pcReason === 'lockdown-active' ? t('Locked') : t('Time up')) : fmtDur(shown, { seconds: shown < 3600 });
+        remEl.querySelector('.l').textContent = a.cappedByPc && own !== Infinity ? t('left · {v} on app', { v: fmtDur(own) }) : a.cappedByPc ? t('until PC stops') : t('left');
         const bar = $(`[data-live-bar="${key}"]`);
         const pctUsed = a.unlimited ? 0 : a.effective > 0 ? Math.min(100, (a.used / a.effective) * 100) : 100;
         bar.className = 'bar ' + l;
         bar.firstElementChild.style.width = pctUsed + '%';
-        $(`[data-live-used="${key}"]`).textContent = `Used ${fmtDur(a.used)}`;
+        $(`[data-live-used="${key}"]`).textContent = t('Used {v}', { v: fmtDur(a.used) });
         const meta = $(`[data-live-meta="${key}"]`);
-        const metaHtml = a.active ? '<span class="live-dot"></span> Running now' : (m.usage[a.name] ? 'Not running' : 'Not used today');
+        const metaHtml = a.active ? `<span class="live-dot"></span> ${t('Running now')}` : (m.usage[a.name] ? t('Not running') : t('Not used today'));
         if (meta.innerHTML !== metaHtml) meta.innerHTML = metaHtml;
     }
 
@@ -1838,32 +2278,32 @@ function renderLimits() {
         const pendingDel = new Set(queue.filter(q => q.method === 'DELETE' && q.endpoint.startsWith('/limits/')).map(q => decodeURIComponent(q.endpoint.slice(8))));
         const pendingEdit = new Set(queue.filter(q => q.method === 'PUT' && q.endpoint.startsWith('/limits/')).map(q => decodeURIComponent(q.endpoint.slice(8).split('/')[0])));
         if (!names.length && !pendingNew.length) {
-            $('#limitsTable').innerHTML = `<div class="card empty"><b>No limits yet</b>Add an application — or <span class="mono">OVERALL</span> for the whole computer.</div>`;
+            $('#limitsTable').innerHTML = `<div class="card empty"><b>${t('No limits yet')}</b>${LANG === 'tr' ? TR_HTML.noLimitsHint : 'Add an application — or <span class="mono">OVERALL</span> for the whole computer.'}</div>`;
             return;
         }
         const today = dayNameOf(new Date());
         // Phones get a compact "1h30" form so seven days fit on one line
-        const compact = v => { const h = Math.floor(v / 3600), m = Math.round((v % 3600) / 60); return h ? `${h}h${m ? String(m).padStart(2, '0') : ''}` : `${m}m`; };
-        const cell = v => (v === undefined || v === null) ? '<span class="hint">—</span>' : Number(v) === 0 ? '<span class="chip danger">Blocked</span>' : `<span class="d-inline">${fmtDur(v)}</span><span class="m-inline">${compact(Number(v))}</span>`;
-        let html = `<div class="table-wrap"><table class="stack limits-t"><thead><tr><th>Application</th>${DAYS.map(d => `<th${d === today ? ' style="color:var(--accent)"' : ''}>${DAY_SHORT[d]}</th>`).join('')}<th></th></tr></thead><tbody>`;
+        const compact = v => { const h = Math.floor(v / 3600), m = Math.round((v % 3600) / 60); return h ? `${h}${t('h')}${m ? String(m).padStart(2, '0') : ''}` : `${m}${t('m')}`; };
+        const cell = v => (v === undefined || v === null) ? '<span class="hint">—</span>' : Number(v) === 0 ? `<span class="chip danger">${t('Blocked')}</span>` : `<span class="d-inline">${fmtDur(v)}</span><span class="m-inline">${compact(Number(v))}</span>`;
+        let html = `<div class="table-wrap"><table class="stack limits-t"><thead><tr><th>${t('Application')}</th>${DAYS.map(d => `<th${d === today ? ' style="color:var(--accent)"' : ''}>${t(DAY_SHORT[d])}</th>`).join('')}<th></th></tr></thead><tbody>`;
         for (const name of names) {
             const l = limits[name] || {};
-            const badges = (pendingDel.has(name) ? ' <span class="chip danger">Deletion queued</span>' : '') + (pendingEdit.has(name) ? ' <span class="chip info">Edit queued</span>' : '');
+            const badges = (pendingDel.has(name) ? ` <span class="chip danger">${t('Deletion queued')}</span>` : '') + (pendingEdit.has(name) ? ` <span class="chip info">${t('Edit queued')}</span>` : '');
             html += `<tr><td class="full"><b>${esc(appLabel(name))}</b>${name === 'OVERALL' ? ' <span class="hint mono">OVERALL</span>' : ''}${badges}</td>
-                ${DAYS.map(d => `<td class="num${d === today ? ' today' : ''}" data-label="${DAY_SHORT[d]}">${cell(l[d])}</td>`).join('')}
+                ${DAYS.map(d => `<td class="num${d === today ? ' today' : ''}" data-label="${t(DAY_SHORT[d])}">${cell(l[d])}</td>`).join('')}
                 <td class="actions full">
-                    <button class="btn sm soft" data-action="exception" data-app="${esc(name)}">Exception</button>
-                    <button class="btn sm" data-action="edit-limit" data-app="${esc(name)}">Edit</button>
-                    <button class="btn sm ghost" data-action="delete-limit" data-app="${esc(name)}" title="Delete">✕</button>
+                    <button class="btn sm soft" data-action="exception" data-app="${esc(name)}">${t('Exception')}</button>
+                    <button class="btn sm" data-action="edit-limit" data-app="${esc(name)}">${t('Edit')}</button>
+                    <button class="btn sm ghost" data-action="delete-limit" data-app="${esc(name)}" title="${t('Delete')}">✕</button>
                 </td></tr>`;
         }
         for (const q of pendingNew) {
             const l = q.data.limits || {};
-            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">Queued</span></td>
-                ${DAYS.map(d => `<td class="num" data-label="${DAY_SHORT[d]}">${cell(l[d])}</td>`).join('')}
-                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
+            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">${t('Queued')}</span></td>
+                ${DAYS.map(d => `<td class="num" data-label="${t(DAY_SHORT[d])}">${cell(l[d])}</td>`).join('')}
+                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">${t('Cancel')}</button></td></tr>`;
         }
-        html += '</tbody></table></div><p class="hint" style="margin-top:8px">— means no limit for that day. A limit of 0 blocks the app for the whole day.</p>';
+        html += '</tbody></table></div><p class="hint" style="margin-top:8px">' + t('— means no limit for that day. A limit of 0 blocks the app for the whole day.') + '</p>';
         $('#limitsTable').innerHTML = html;
     });
 }
@@ -1881,31 +2321,31 @@ async function limitDialog(appName) {
         const off = v === undefined || v === null;
         const secs = off ? 3600 : Number(v) || 0;
         return `<div class="day-row${off ? ' off' : ''}${d === today ? ' today' : ''}" data-day="${d}">
-            <span class="dname">${d}${d === today ? ' · today' : ''}</span>
-            <div class="hm"><input class="input" type="number" min="0" max="24" name="h_${d}" value="${Math.floor(secs / 3600)}" aria-label="${d} hours"><small>h</small>
-                <input class="input" type="number" min="0" max="59" name="m_${d}" value="${Math.floor((secs % 3600) / 60)}" aria-label="${d} minutes"><small>m</small></div>
-            <label class="check"><input type="checkbox" name="off_${d}" ${off ? 'checked' : ''}>No limit</label>
+            <span class="dname">${t(d)}${d === today ? t(' · today') : ''}</span>
+            <div class="hm"><input class="input" type="number" min="0" max="24" name="h_${d}" value="${Math.floor(secs / 3600)}" aria-label="${t(d)} ${t('hours')}"><small>${t('h')}</small>
+                <input class="input" type="number" min="0" max="59" name="m_${d}" value="${Math.floor((secs % 3600) / 60)}" aria-label="${t(d)} ${t('minutes')}"><small>${t('m')}</small></div>
+            <label class="check"><input type="checkbox" name="off_${d}" ${off ? 'checked' : ''}>${t('No limit')}</label>
         </div>`;
     }).join('');
 
     const body = `
-        <label class="field" style="margin-bottom:14px"><span>Application</span>
+        <label class="field" style="margin-bottom:14px"><span>${t('Application')}</span>
             <input class="input mono" name="app" list="appSuggest" value="${esc(appName || '')}" ${isNew ? '' : 'readonly'} placeholder="chrome.exe" autocomplete="off">
-            <datalist id="appSuggest">${[...suggestions].map(s => `<option value="${esc(s)}">${s === 'OVERALL' ? 'Whole computer' : ''}</option>`).join('')}</datalist>
-            <span class="hint">Process name exactly as Windows shows it (case-sensitive), or <span class="mono">OVERALL</span> for total computer time.</span>
+            <datalist id="appSuggest">${[...suggestions].map(s => `<option value="${esc(s)}">${s === 'OVERALL' ? t('Whole computer') : ''}</option>`).join('')}</datalist>
+            <span class="hint">${LANG === 'tr' ? TR_HTML.processHint : 'Process name exactly as Windows shows it (case-sensitive), or <span class="mono">OVERALL</span> for total computer time.'}</span>
         </label>
         <div class="row" style="margin-bottom:10px">
-            <span class="hint" style="flex:1">Daily allowance</span>
-            <button type="button" class="btn sm" data-fill="all">Copy Monday to all</button>
-            <button type="button" class="btn sm" data-fill="weekdays">Copy Monday to weekdays</button>
+            <span class="hint" style="flex:1">${t('Daily allowance')}</span>
+            <button type="button" class="btn sm" data-fill="all">${t('Copy Monday to all')}</button>
+            <button type="button" class="btn sm" data-fill="weekdays">${t('Copy Monday to weekdays')}</button>
         </div>
         <div class="day-rows">${rows}</div>`;
 
     const r = await openDialog({
-        title: isNew ? 'Add application limit' : `Edit ${appLabel(appName)}`,
-        subtitle: isNew ? 'Set how long the app may be used each day.' : 'Changes apply on the next check (about 5 seconds).',
+        title: isNew ? t('Add application limit') : t('Edit {app}', { app: appLabel(appName) }),
+        subtitle: isNew ? t('Set how long the app may be used each day.') : t('Changes apply on the next check (about 5 seconds).'),
         icon: 'clock', wide: true, body,
-        actions: [{ label: 'Cancel', value: null, kind: 'ghost' }, { label: isNew ? 'Add' : 'Save', value: 'save', kind: 'primary', submit: true }],
+        actions: [{ label: t('Cancel'), value: null, kind: 'ghost' }, { label: isNew ? t('Add') : t('Save'), value: 'save', kind: 'primary', submit: true }],
         onMount(form) {
             form.addEventListener('change', e => {
                 if (e.target.name && e.target.name.startsWith('off_')) e.target.closest('.day-row').classList.toggle('off', e.target.checked);
@@ -1922,11 +2362,11 @@ async function limitDialog(appName) {
         },
         validate(form) {
             const name = form.app.value.trim();
-            if (!name) return 'Enter an application name.';
-            if (isNew && known.includes(name)) return `${name} already has a limit — edit it instead.`;
+            if (!name) return t('Enter an application name.');
+            if (isNew && known.includes(name)) return t('{app} already has a limit — edit it instead.', { app: name });
             for (const d of DAYS) {
                 const h = +form[`h_${d}`].value, m = +form[`m_${d}`].value;
-                if (!form[`off_${d}`].checked && (h < 0 || m < 0 || m > 59 || h * 3600 + m * 60 > 86400)) return `${d}: enter a time between 0 and 24 hours.`;
+                if (!form[`off_${d}`].checked && (h < 0 || m < 0 || m > 59 || h * 3600 + m * 60 > 86400)) return t('{day}: enter a time between 0 and 24 hours.', { day: t(d) });
             }
             return null;
         },
@@ -1938,17 +2378,17 @@ async function limitDialog(appName) {
     for (const d of DAYS) {
         limits[d] = form[`off_${d}`].checked ? null : (parseInt(form[`h_${d}`].value, 10) || 0) * 3600 + (parseInt(form[`m_${d}`].value, 10) || 0) * 60;
     }
-    if (isNew) await mutate('POST', '/limits', { app_name: name, limits }, { what: `Limit for ${appLabel(name)}` });
+    if (isNew) await mutate('POST', '/limits', { app_name: name, limits }, { what: t('Limit for {app}', { app: appLabel(name) }) });
     else {
         // Optimistic update so the dashboard reacts instantly
         if (S.data && S.data.limits) { S.data.limits[name] = limits; S.rendered = {}; renderAll(); }
-        await mutate('PUT', `/limits/${encodeURIComponent(name)}`, { limits }, { what: `Limit for ${appLabel(name)}` });
+        await mutate('PUT', `/limits/${encodeURIComponent(name)}`, { limits }, { what: t('Limit for {app}', { app: appLabel(name) }) });
     }
 }
 
 async function deleteLimit(name) {
-    if (!await confirmDialog(`Remove ${appLabel(name)}?`, `${name} will no longer be limited or tracked against a limit. Usage history is kept.`, { okLabel: 'Remove', danger: true })) return;
-    await mutate('DELETE', `/limits/${encodeURIComponent(name)}`, undefined, { what: `Removal of ${appLabel(name)}` });
+    if (!await confirmDialog(t('Remove {app}?', { app: appLabel(name) }), t('{app} will no longer be limited or tracked against a limit. Usage history is kept.', { app: name }), { okLabel: t('Remove'), danger: true })) return;
+    await mutate('DELETE', `/limits/${encodeURIComponent(name)}`, undefined, { what: t('Removal of {app}', { app: appLabel(name) }) });
 }
 
 /* ---------- Exceptions ---------- */
@@ -1960,24 +2400,24 @@ async function exceptionDialog(app, presetSecs) {
     const today = localDate();
     const body = `
         <div class="form-grid">
-            <label class="field"><span>Application</span>
+            <label class="field"><span>${t('Application')}</span>
                 <select class="input" name="app">${names.map(n => `<option value="${esc(n)}" ${n === (app || 'OVERALL') ? 'selected' : ''}>${esc(appLabel(n))}</option>`).join('')}</select>
             </label>
-            <label class="field"><span>Date</span><input class="input" type="date" name="date" value="${today}"></label>
+            <label class="field"><span>${t('Date')}</span><input class="input" type="date" name="date" value="${today}"></label>
         </div>
-        <div class="field" style="margin-top:14px"><span>Adjustment</span>
+        <div class="field" style="margin-top:14px"><span>${t('Adjustment')}</span>
             <div class="seg-ctl" role="radiogroup">
-                <button type="button" data-mode="add" class="on">Add time</button>
-                <button type="button" data-mode="remove">Remove time</button>
-                <button type="button" data-mode="set">Set exact limit</button>
+                <button type="button" data-mode="add" class="on">${t('Add time')}</button>
+                <button type="button" data-mode="remove">${t('Remove time')}</button>
+                <button type="button" data-mode="set">${t('Set exact limit')}</button>
             </div>
         </div>
-        <div class="field" style="margin-top:14px"><span>Amount</span>
-            <div class="hm"><input class="input" type="number" min="0" max="24" name="h" value="${Math.floor((presetSecs || 1800) / 3600)}"><small>hours</small>
-                <input class="input" type="number" min="0" max="59" name="m" value="${Math.floor(((presetSecs || 1800) % 3600) / 60)}"><small>minutes</small></div>
-            <div class="preset-row">${[[15, '15m'], [30, '30m'], [60, '1h'], [90, '1h 30m'], [120, '2h']].map(([v, l]) => `<button type="button" class="btn sm" data-preset="${v}">${l}</button>`).join('')}</div>
+        <div class="field" style="margin-top:14px"><span>${t('Amount')}</span>
+            <div class="hm"><input class="input" type="number" min="0" max="24" name="h" value="${Math.floor((presetSecs || 1800) / 3600)}"><small>${t('hours')}</small>
+                <input class="input" type="number" min="0" max="59" name="m" value="${Math.floor(((presetSecs || 1800) % 3600) / 60)}"><small>${t('minutes')}</small></div>
+            <div class="preset-row">${[15, 30, 60, 90, 120].map(v => `<button type="button" class="btn sm" data-preset="${v}">${v % 60 ? fmtDur(v * 60) : v / 60 + t('h')}</button>`).join('')}</div>
         </div>
-        <label class="field" style="margin-top:14px"><span>Reason (optional)</span><input class="input" name="reason" placeholder="Homework, birthday, good grades…" maxlength="120"></label>
+        <label class="field" style="margin-top:14px"><span>${t('Reason (optional)')}</span><input class="input" name="reason" placeholder="${t('Homework, birthday, good grades…')}" maxlength="120"></label>
         <div class="preview" data-preview></div>
         <input type="hidden" name="mode" value="add">`;
 
@@ -1987,7 +2427,8 @@ async function exceptionDialog(app, presetSecs) {
         const mode = form.mode.value;
         const name = form.app.value;
         if (!m || form.date.value !== m.today || !m.sameDay) {
-            el.innerHTML = `${mode === 'set' ? 'Sets the limit to' : mode === 'add' ? 'Adds' : 'Removes'} <b>${fmtDur(secs)}</b> for ${esc(appLabel(name))} on ${esc(form.date.value)}.`;
+            const tpl = mode === 'set' ? 'Sets the limit to <b>{v}</b> for {app} on {date}.' : mode === 'add' ? 'Adds <b>{v}</b> for {app} on {date}.' : 'Removes <b>{v}</b> for {app} on {date}.';
+            el.innerHTML = t(tpl, { v: fmtDur(secs), app: esc(appLabel(name)), date: esc(form.date.value) });
             return;
         }
         const lim = computeLimit(name, m.dayName, S.data.limits || {}, m.excToday);
@@ -1996,13 +2437,13 @@ async function exceptionDialog(app, presetSecs) {
         const unlimited = lim.unlimited && mode !== 'set';
         const newRemaining = Math.max(0, newLimit - used);
         el.innerHTML = unlimited
-            ? `${esc(appLabel(name))} has no limit today, so this adjustment changes nothing until a limit is set.`
-            : `Today's limit becomes <b>${fmtDur(newLimit)}</b> → <b>${fmtDur(newRemaining)}</b> left (now ${fmtDur(Math.max(0, lim.effective - used))}).`;
+            ? t('{app} has no limit today, so this adjustment changes nothing until a limit is set.', { app: esc(appLabel(name)) })
+            : t("Today's limit becomes <b>{lim}</b> → <b>{rem}</b> left (now {now}).", { lim: fmtDur(newLimit), rem: fmtDur(newRemaining), now: fmtDur(Math.max(0, lim.effective - used)) });
     };
 
     const r = await openDialog({
-        title: 'Grant an exception', subtitle: 'Applies to the selected day only.', icon: 'gift', body,
-        actions: [{ label: 'Cancel', value: null, kind: 'ghost' }, { label: 'Apply exception', value: 'save', kind: 'primary', submit: true }],
+        title: t('Grant an exception'), subtitle: t('Applies to the selected day only.'), icon: 'gift', body,
+        actions: [{ label: t('Cancel'), value: null, kind: 'ghost' }, { label: t('Apply exception'), value: 'save', kind: 'primary', submit: true }],
         onMount(form) {
             form.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
                 form.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
@@ -2020,10 +2461,10 @@ async function exceptionDialog(app, presetSecs) {
             preview(form);
         },
         validate(form) {
-            if (!form.date.value) return 'Pick a date.';
+            if (!form.date.value) return t('Pick a date.');
             const secs = (parseInt(form.h.value, 10) || 0) * 3600 + (parseInt(form.m.value, 10) || 0) * 60;
-            if (form.mode.value !== 'set' && secs <= 0) return 'Enter an amount greater than zero.';
-            if (+form.m.value > 59 || +form.m.value < 0 || +form.h.value < 0) return 'Minutes must be between 0 and 59.';
+            if (form.mode.value !== 'set' && secs <= 0) return t('Enter an amount greater than zero.');
+            if (+form.m.value > 59 || +form.m.value < 0 || +form.h.value < 0) return t('Minutes must be between 0 and 59.');
             return null;
         },
     });
@@ -2037,7 +2478,7 @@ async function exceptionDialog(app, presetSecs) {
 }
 
 async function createException(app, date, exceptionTime, reason, mode) {
-    const label = mode === 'set' ? `Set ${appLabel(app)} to ${fmtDur(+exceptionTime)}` : `${exceptionTime >= 0 ? '+' : '-'}${fmtDur(Math.abs(exceptionTime))} for ${appLabel(app)}`;
+    const label = mode === 'set' ? t('Set {app} to {v}', { app: appLabel(app), v: fmtDur(+exceptionTime) }) : t('{v} for {app}', { v: signed(exceptionTime), app: appLabel(app) });
     // Optimistic: show the new limit immediately when it is for today
     if (S.data && date === dataDate() && S.source === 'live') {
         const ex = S.data.today_exceptions = S.data.today_exceptions || {};
@@ -2050,7 +2491,7 @@ async function createException(app, date, exceptionTime, reason, mode) {
 }
 
 async function quickException(app, secs) {
-    if (!await confirmDialog(`Add ${fmtDur(secs)} for ${appLabel(app)}?`, `Today's limit for ${appLabel(app)} will be extended by ${fmtDur(secs)}.`, { okLabel: `Add ${fmtDur(secs)}`, icon: 'gift' })) return;
+    if (!await confirmDialog(t('Add {v} for {app}?', { v: fmtDur(secs), app: appLabel(app) }), t("Today's limit for {app} will be extended by {v}.", { app: appLabel(app), v: fmtDur(secs) }), { okLabel: t('Add {v}', { v: fmtDur(secs) }), icon: 'gift' })) return;
     await createException(app, localDate(), secs, null, 'add');
 }
 
@@ -2065,9 +2506,9 @@ async function renderExceptions(force) {
         try {
             const r = await api(`/exceptions/${date}`);
             exc = S.excCache[date] = r.json.data || {};
-            if (r.json.cached) toast('info', 'Showing cached exceptions', "The kid's computer is offline.");
+            if (r.json.cached) toast('info', t('Showing cached exceptions'), t("The kid's computer is offline."));
         } catch (e) {
-            $('#exceptionsTable').innerHTML = `<div class="card empty"><b>Could not load exceptions</b>${esc(e.message)}</div>`;
+            $('#exceptionsTable').innerHTML = `<div class="card empty"><b>${t('Could not load exceptions')}</b>${esc(e.message)}</div>`;
             return;
         }
     } else return;
@@ -2086,35 +2527,35 @@ async function renderExceptions(force) {
         }
         const apps = Object.keys(exc);
         if (!apps.length && !queuedAdd.length) {
-            $('#exceptionsTable').innerHTML = `<div class="card empty"><b>No exceptions on ${esc(date)}</b>Grant extra time or set a special limit for a single day.<div style="margin-top:12px"><button class="btn primary" data-action="exception">+ New exception</button></div></div>`;
+            $('#exceptionsTable').innerHTML = `<div class="card empty"><b>${t('No exceptions on {date}', { date: esc(date) })}</b>${t('Grant extra time or set a special limit for a single day.')}<div style="margin-top:12px"><button class="btn primary" data-action="exception">${t('+ New exception')}</button></div></div>`;
             return;
         }
         const dayName = dayNameOf(date);
-        const desc = t => {
-            const c = classifyEntry(t);
+        const desc = v => {
+            const c = classifyEntry(v);
             if (c.kind === 'set') return `<span class="chip accent">= ${fmtDur(c.value)}</span>`;
             if (c.kind === 'add') return `<span class="chip ${c.value >= 0 ? 'ok' : 'danger'}">${c.value >= 0 ? '+' : '-'}${fmtDur(Math.abs(c.value))}</span>`;
-            return `<span class="chip">${esc(t)}</span>`;
+            return `<span class="chip">${esc(v)}</span>`;
         };
-        let html = '<div class="table-wrap"><table class="stack"><thead><tr><th>Application</th><th>Adjustment</th><th>Reason</th><th></th></tr></thead><tbody>';
+        let html = `<div class="table-wrap"><table class="stack"><thead><tr><th>${t('Application')}</th><th>${t('Adjustment')}</th><th>${t('Reason')}</th><th></th></tr></thead><tbody>`;
         for (const app of apps) {
             const list = normalizeExcList(exc[app]);
             list.forEach((e, i) => {
                 const qid = delTx.get(`${app}/${i}`);
-                html += `<tr class="exc-tx"><td class="full"><b>${esc(appLabel(app))}</b>${qid !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td><td data-label="Adjustment">${desc(e[0])}</td><td data-label="Reason">${e[1] && e[1] !== 'null' ? esc(e[1]) : '<span class="hint">—</span>'}</td>
-                    <td class="actions">${qid !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${qid}">Undo</button>` : ''}
-                    <button class="btn sm ghost" data-action="delete-exc-tx" data-app="${esc(app)}" data-date="${esc(date)}" data-index="${i}" title="Delete">✕</button></td></tr>`;
+                html += `<tr class="exc-tx"><td class="full"><b>${esc(appLabel(app))}</b>${qid !== undefined ? ` <span class="chip danger">${t('Deletion queued')}</span>` : ''}</td><td data-label="${t('Adjustment')}">${desc(e[0])}</td><td data-label="${t('Reason')}">${e[1] && e[1] !== 'null' ? esc(e[1]) : '<span class="hint">—</span>'}</td>
+                    <td class="actions">${qid !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${qid}">${t('Undo')}</button>` : ''}
+                    <button class="btn sm ghost" data-action="delete-exc-tx" data-app="${esc(app)}" data-date="${esc(date)}" data-index="${i}" title="${t('Delete')}">✕</button></td></tr>`;
             });
             const lim = computeLimit(app, dayName, S.data.limits || {}, exc);
             const allQ = delAll.get(app);
-            html += `<tr class="sub"><td class="full">${esc(appLabel(app))} · result${allQ !== undefined ? ' <span class="chip danger">Deletion queued</span>' : ''}</td>
-                <td colspan="2" class="full" data-label="Today's limit">${lim.unlimited ? 'No limit configured' : `${lim.configured === null ? 'No base limit' : fmtDur(lim.configured)} → <b>${fmtDur(lim.effective)}</b>`}</td>
-                <td class="actions full">${allQ !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${allQ}">Undo</button>` : ''}
-                <button class="btn sm" data-action="delete-exc-all" data-app="${esc(app)}" data-date="${esc(date)}">Delete all</button></td></tr>`;
+            html += `<tr class="sub"><td class="full">${t('{app} · result', { app: esc(appLabel(app)) })}${allQ !== undefined ? ` <span class="chip danger">${t('Deletion queued')}</span>` : ''}</td>
+                <td colspan="2" class="full" data-label="${t("Today's limit")}">${lim.unlimited ? t('No limit configured') : `${lim.configured === null ? t('No base limit') : fmtDur(lim.configured)} → <b>${fmtDur(lim.effective)}</b>`}</td>
+                <td class="actions full">${allQ !== undefined ? `<button class="btn sm" data-action="cancel-queue" data-id="${allQ}">${t('Undo')}</button>` : ''}
+                <button class="btn sm" data-action="delete-exc-all" data-app="${esc(app)}" data-date="${esc(date)}">${t('Delete all')}</button></td></tr>`;
         }
         for (const q of queuedAdd) {
-            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">Queued</span></td><td data-label="Adjustment">${desc(q.data.exception_time)}</td><td data-label="Reason">${q.data.reason ? esc(q.data.reason) : '<span class="hint">—</span>'}</td>
-                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">Cancel</button></td></tr>`;
+            html += `<tr class="pending"><td class="full"><b>${esc(appLabel(q.data.app_name))}</b> <span class="chip info">${t('Queued')}</span></td><td data-label="${t('Adjustment')}">${desc(q.data.exception_time)}</td><td data-label="${t('Reason')}">${q.data.reason ? esc(q.data.reason) : '<span class="hint">—</span>'}</td>
+                <td class="actions full"><button class="btn sm" data-action="cancel-queue" data-id="${q.id}">${t('Cancel')}</button></td></tr>`;
         }
         html += '</tbody></table></div>';
         $('#exceptionsTable').innerHTML = html;
@@ -2122,14 +2563,14 @@ async function renderExceptions(force) {
 }
 
 async function deleteExceptionTx(date, app, index) {
-    if (!await confirmDialog('Delete this exception?', `The adjustment for ${appLabel(app)} on ${date} will be removed and the limit recalculated.`, { okLabel: 'Delete', danger: true })) return;
-    await mutate('DELETE', `/exceptions/${date}/${encodeURIComponent(app)}/${index}`, undefined, { what: 'Exception removal' });
+    if (!await confirmDialog(t('Delete this exception?'), t('The adjustment for {app} on {date} will be removed and the limit recalculated.', { app: appLabel(app), date }), { okLabel: t('Delete'), danger: true })) return;
+    await mutate('DELETE', `/exceptions/${date}/${encodeURIComponent(app)}/${index}`, undefined, { what: t('Exception removal') });
     delete S.excCache[date];
     renderExceptions(true);
 }
 async function deleteExceptionAll(date, app) {
-    if (!await confirmDialog(`Delete all exceptions for ${appLabel(app)}?`, `Every adjustment on ${date} for ${appLabel(app)} will be removed.`, { okLabel: 'Delete all', danger: true })) return;
-    await mutate('DELETE', `/exceptions/${date}/${encodeURIComponent(app)}`, undefined, { what: 'Exception removal' });
+    if (!await confirmDialog(t('Delete all exceptions for {app}?', { app: appLabel(app) }), t('Every adjustment on {date} for {app} will be removed.', { date, app: appLabel(app) }), { okLabel: t('Delete all'), danger: true })) return;
+    await mutate('DELETE', `/exceptions/${date}/${encodeURIComponent(app)}`, undefined, { what: t('Exception removal') });
     delete S.excCache[date];
     renderExceptions(true);
 }
@@ -2167,26 +2608,26 @@ function renderLockdown() {
     renderOnce('nl', JSON.stringify([nl, pendingNl]), () => {
         $('#nlEnabled').checked = nl.enabled;
         $('#nlPerDay').checked = nl.per_day;
-        const scopes = nl.per_day ? DAYS.map(d => [d, d, nl.days[d]]) : [['all', 'Every day', nl.all_days]];
+        const scopes = nl.per_day ? DAYS.map(d => [d, t(d), nl.days[d]]) : [['all', t('Every day'), nl.all_days]];
         const today = dayNameOf(new Date());
-        $('#nlEditors').innerHTML = (pendingNl ? '<div class="chips" style="margin:0 0 12px"><span class="chip info">A lockdown change is queued and will apply when the kid\'s PC is online</span></div>' : '') +
+        $('#nlEditors').innerHTML = (pendingNl ? `<div class="chips" style="margin:0 0 12px"><span class="chip info">${t("A lockdown change is queued and will apply when the kid's PC is online")}</span></div>` : '') +
             scopes.map(([key, title, sch]) => `
             <div class="card nl-card" style="${nl.enabled ? '' : 'opacity:.7'}">
-                <h3><span>${esc(title)}${key === today ? ' <span class="chip accent">Today</span>' : ''}</span>
-                    ${nl.per_day ? `<button class="btn sm ghost" data-nl-copy="${key}">Copy to all days</button>` : ''}</h3>
+                <h3><span>${esc(title)}${key === today ? ` <span class="chip accent">${t('Today')}</span>` : ''}</span>
+                    ${nl.per_day ? `<button class="btn sm ghost" data-nl-copy="${key}">${t('Copy to all days')}</button>` : ''}</h3>
                 ${nlTimeline(sch)}
                 ${['blocked', 'whitelist'].map(type => `
                 <div class="nl-group">
-                    <div class="nl-group-title">${type === 'blocked' ? '<span class="chip danger">Blocked</span> computer shuts down' : '<span class="chip ok">Whitelisted</span> allowed even inside a blocked zone'}</div>
+                    <div class="nl-group-title">${type === 'blocked' ? `<span class="chip danger">${t('Blocked')}</span> ${t('computer shuts down')}` : `<span class="chip ok">${t('Whitelisted')}</span> ${t('allowed even inside a blocked zone')}`}</div>
                     ${sch[type].length ? sch[type].map((w, i) => `
                     <div class="nl-row">
-                        <input class="input" type="time" value="${esc(w[0])}" data-nl="${key}|${type}|${i}|0" aria-label="Start">
+                        <input class="input" type="time" value="${esc(w[0])}" data-nl="${key}|${type}|${i}|0" aria-label="${t('Start')}">
                         <span class="arrow">→</span>
-                        <input class="input" type="time" value="${esc(w[1])}" data-nl="${key}|${type}|${i}|1" aria-label="End">
+                        <input class="input" type="time" value="${esc(w[1])}" data-nl="${key}|${type}|${i}|1" aria-label="${t('End')}">
                         <span class="hint">${nlWindowLen(w)}</span>
-                        <button class="btn sm ghost" data-nl-del="${key}|${type}|${i}" title="Remove">✕</button>
-                    </div>`).join('') : `<div class="nl-empty">No ${type === 'blocked' ? 'blocked' : 'whitelisted'} zones.</div>`}
-                    <button class="btn sm" data-nl-add="${key}|${type}">+ Add ${type === 'blocked' ? 'blocked' : 'whitelisted'} zone</button>
+                        <button class="btn sm ghost" data-nl-del="${key}|${type}|${i}" title="${t('Remove')}">✕</button>
+                    </div>`).join('') : `<div class="nl-empty">${type === 'blocked' ? t('No blocked zones.') : t('No whitelisted zones.')}</div>`}
+                    <button class="btn sm" data-nl-add="${key}|${type}">${type === 'blocked' ? t('+ Add blocked zone') : t('+ Add whitelisted zone')}</button>
                 </div>`).join('')}
             </div>`).join('');
     });
@@ -2196,7 +2637,7 @@ function nlWindowLen(w) {
     const s = toMin(w[0]), e = toMin(w[1]);
     if (s === null || e === null) return '';
     const len = (e - s + 1440) % 1440 || 1440;
-    return `${fmtDur(len * 60)}${e < s ? ' · crosses midnight' : ''}`;
+    return `${fmtDur(len * 60)}${e < s ? ' · ' + t('crosses midnight') : ''}`;
 }
 
 function nlTimeline(sch) {
@@ -2219,30 +2660,30 @@ function renderLockdownStatus(m) {
     const el = $('#nlStatus');
     const lk = lockdownInfo(S.nlDirty ? S.nl : S.data.night_lockdown);
     let html;
-    if (!lk) html = '<span class="chip">Lockdown is off</span>';
-    else if (lk.activeNow) html = `<span class="chip danger">Active now${lk.endsAt ? ` · ends ${fmtTime(lk.endsAt)} (in ${fmtDur((lk.endsAt - Date.now()) / 1000)})` : ''}</span>`;
-    else if (lk.startsAt) html = `<span class="chip warn">Next lockdown ${fmtTime(lk.startsAt)} · in ${fmtDur(lk.startsInSec, { seconds: lk.startsInSec < 3600 })}</span>${lk.endsAt ? `<span class="chip">until ${fmtTime(lk.endsAt)}</span>` : ''}`;
-    else html = '<span class="chip">No blocked zones configured</span>';
-    if (S.nlDirty) html += '<span class="chip info">Preview of unsaved changes</span>';
+    if (!lk) html = `<span class="chip">${t('Lockdown is off')}</span>`;
+    else if (lk.activeNow) html = `<span class="chip danger">${lk.endsAt ? t('Active now · ends {t} (in {d})', { t: fmtTime(lk.endsAt), d: fmtDur((lk.endsAt - Date.now()) / 1000) }) : t('Active now')}</span>`;
+    else if (lk.startsAt) html = `<span class="chip warn">${t('Next lockdown {t} · in {d}', { t: fmtTime(lk.startsAt), d: fmtDur(lk.startsInSec, { seconds: lk.startsInSec < 3600 }) })}</span>${lk.endsAt ? `<span class="chip">${t('until {t}', { t: fmtTime(lk.endsAt) })}</span>` : ''}`;
+    else html = `<span class="chip">${t('No blocked zones configured')}</span>`;
+    if (S.nlDirty) html += `<span class="chip info">${t('Preview of unsaved changes')}</span>`;
     el.style.marginTop = '14px';
     if (el.innerHTML !== html) el.innerHTML = html;
 }
 
 async function saveNl() {
     const nl = S.nl;
-    const scopes = nl.per_day ? DAYS.map(d => [d, nl.days[d]]) : [['Every day', nl.all_days]];
+    const scopes = nl.per_day ? DAYS.map(d => [t(d), nl.days[d]]) : [[t('Every day'), nl.all_days]];
     for (const [label, sch] of scopes) {
         for (const type of ['blocked', 'whitelist']) {
             for (const w of sch[type]) {
-                if (toMin(w[0]) === null || toMin(w[1]) === null) { toast('error', 'Incomplete zone', `${label}: every zone needs a start and an end time.`); return; }
+                if (toMin(w[0]) === null || toMin(w[1]) === null) { toast('error', t('Incomplete zone'), t('{label}: every zone needs a start and an end time.', { label })); return; }
             }
         }
     }
     const lk = lockdownInfo(nl);
     if (lk && lk.activeNow && S.source === 'live') {
-        if (!await confirmDialog('Lockdown will start immediately', "The current time is inside a blocked zone. The kid's computer will shut down within about 15 seconds after saving.", { okLabel: 'Save anyway', danger: true, icon: 'warn' })) return;
+        if (!await confirmDialog(t('Lockdown will start immediately'), t("The current time is inside a blocked zone. The kid's computer will shut down within about 15 seconds after saving."), { okLabel: t('Save anyway'), danger: true, icon: 'warn' })) return;
     }
-    const r = await mutate('PUT', '/nightlockdown', nl, { what: 'Night lockdown' });
+    const r = await mutate('PUT', '/nightlockdown', nl, { what: t('Night lockdown') });
     if (r) {
         S.data.night_lockdown = JSON.parse(JSON.stringify(nl));
         setNlDirty(false);
@@ -2265,7 +2706,7 @@ async function renderUsage() {
             S.usageAll = S.usageAll || {};
             S.usageAll[date] = usage;
         } catch (e) {
-            $('#usageTable').innerHTML = `<div class="card empty"><b>Could not load usage</b>${esc(e.message)}</div>`;
+            $('#usageTable').innerHTML = `<div class="card empty"><b>${t('Could not load usage')}</b>${esc(e.message)}</div>`;
             return;
         }
     }
@@ -2274,17 +2715,17 @@ async function renderUsage() {
     const dayName = dayNameOf(date);
     const names = Object.keys(usage).sort((a, b) => (a === 'OVERALL' ? -1 : b === 'OVERALL' ? 1 : (usage[b] || 0) - (usage[a] || 0)));
     if (!names.length) {
-        $('#usageTable').innerHTML = `<div class="card empty"><b>No usage recorded on ${esc(date)}</b>Usage appears once the engine runs on the kid's computer.</div>`;
+        $('#usageTable').innerHTML = `<div class="card empty"><b>${t('No usage recorded on {date}', { date: esc(date) })}</b>${t("Usage appears once the engine runs on the kid's computer.")}</div>`;
     } else {
         const max = Math.max(...names.map(n => Number(usage[n]) || 0), 1);
-        let html = '<div class="table-wrap"><table class="stack"><thead><tr><th>Application</th><th>Used</th><th style="width:40%">Share</th><th>Limit (base)</th></tr></thead><tbody>';
+        let html = `<div class="table-wrap"><table class="stack"><thead><tr><th>${t('Application')}</th><th>${t('Used')}</th><th style="width:40%">${t('Share')}</th><th>${t('Limit (base)')}</th></tr></thead><tbody>`;
         for (const n of names) {
             const secs = Number(usage[n]) || 0;
             const lim = limits[n] ? limits[n][dayName] : undefined;
             const over = lim !== undefined && lim !== null && secs >= lim;
-            html += `<tr><td class="full"><b>${esc(appLabel(n))}</b></td><td class="num" data-label="Used">${fmtDur(secs)}</td>
+            html += `<tr><td class="full"><b>${esc(appLabel(n))}</b></td><td class="num" data-label="${t('Used')}">${fmtDur(secs)}</td>
                 <td class="full" style="grid-row:3"><div class="bar ${over ? 'danger' : n === 'OVERALL' ? 'ok' : ''}"><i style="width:${(secs / max) * 100}%"></i></div></td>
-                <td class="num" data-label="Limit">${lim === undefined || lim === null ? '<span class="hint">—</span>' : fmtDur(lim)}${over ? ' <span class="chip danger">reached</span>' : ''}</td></tr>`;
+                <td class="num" data-label="${t('Limit')}">${lim === undefined || lim === null ? '<span class="hint">—</span>' : fmtDur(lim)}${over ? ` <span class="chip danger">${t('reached')}</span>` : ''}</td></tr>`;
         }
         html += '</tbody></table></div>';
         $('#usageTable').innerHTML = html;
@@ -2310,7 +2751,7 @@ function renderWeek(selected) {
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
         const key = localDate(d);
-        cols.push({ key, day: DAY_SHORT[dayNameOf(d)], v: Number((all[key] || {}).OVERALL) || 0 });
+        cols.push({ key, day: t(DAY_SHORT[dayNameOf(d)]), v: Number((all[key] || {}).OVERALL) || 0 });
     }
     const max = Math.max(...cols.map(c => c.v), 3600);
     $('#weekChart').innerHTML = cols.map(c => `
@@ -2327,17 +2768,18 @@ function describeQueueItem(q) {
     const ep = q.endpoint;
     if (ep === '/exceptions' && q.method === 'POST') {
         const c = classifyEntry(d.exception_time);
-        return `Exception for <b>${esc(appLabel(d.app_name))}</b> on ${esc(d.date)}: ${c.kind === 'set' ? `set to ${fmtDur(c.value)}` : `${c.value >= 0 ? '+' : '-'}${fmtDur(Math.abs(c.value))}`}${d.reason ? ` · “${esc(d.reason)}”` : ''}`;
+        const change = c.kind === 'set' ? t('set to {v}', { v: fmtDur(c.value) }) : signed(c.value);
+        return t('Exception for <b>{app}</b> on {date}: {change}', { app: esc(appLabel(d.app_name)), date: esc(d.date), change }) + (d.reason ? ` · “${esc(d.reason)}”` : '');
     }
     if (ep.startsWith('/exceptions/') && q.method === 'DELETE') {
         const parts = ep.split('/').slice(2).map(decodeURIComponent);
-        return `Delete ${parts[2] !== undefined ? 'an' : 'all'} exception${parts[2] !== undefined ? '' : 's'} for <b>${esc(appLabel(parts[1]))}</b> on ${esc(parts[0])}`;
+        return t(parts[2] !== undefined ? 'Delete an exception for <b>{app}</b> on {date}' : 'Delete all exceptions for <b>{app}</b> on {date}', { app: esc(appLabel(parts[1])), date: esc(parts[0]) });
     }
-    if (ep === '/limits' && q.method === 'POST') return `Add limit for <b>${esc(appLabel(d.app_name))}</b>`;
-    if (ep.startsWith('/limits/') && q.method === 'PUT') return `Update limit for <b>${esc(appLabel(decodeURIComponent(ep.split('/')[2])))}</b>`;
-    if (ep.startsWith('/limits/') && q.method === 'DELETE') return `Remove limit for <b>${esc(appLabel(decodeURIComponent(ep.split('/')[2])))}</b>`;
-    if (ep === '/nightlockdown') return `Update night lockdown (${d.enabled ? 'enabled' : 'disabled'})`;
-    if (ep === '/config') return 'Upload full configuration';
+    if (ep === '/limits' && q.method === 'POST') return t('Add limit for <b>{app}</b>', { app: esc(appLabel(d.app_name)) });
+    if (ep.startsWith('/limits/') && q.method === 'PUT') return t('Update limit for <b>{app}</b>', { app: esc(appLabel(decodeURIComponent(ep.split('/')[2]))) });
+    if (ep.startsWith('/limits/') && q.method === 'DELETE') return t('Remove limit for <b>{app}</b>', { app: esc(appLabel(decodeURIComponent(ep.split('/')[2]))) });
+    if (ep === '/nightlockdown') return d.enabled ? t('Update night lockdown (enabled)') : t('Update night lockdown (disabled)');
+    if (ep === '/config') return t('Upload full configuration');
     return `<span class="mono">${esc(q.method)} ${esc(ep)}</span>`;
 }
 
@@ -2346,23 +2788,23 @@ function renderQueue() {
     const q = S.data.queue || [];
     renderOnce('queue', JSON.stringify(q), () => {
         if (!q.length) {
-            $('#queueTable').innerHTML = '<div class="card empty"><b>Nothing pending</b>All changes have reached the kid\'s computer.</div>';
+            $('#queueTable').innerHTML = `<div class="card empty"><b>${t('Nothing pending')}</b>${t("All changes have reached the kid's computer.")}</div>`;
             return;
         }
-        $('#queueTable').innerHTML = `<div class="table-wrap"><table class="stack" style="--cols:1"><thead><tr><th>#</th><th>Change</th><th></th></tr></thead><tbody>
-            ${q.map(i => `<tr><td class="num hint d-only">${i.id}</td><td>${describeQueueItem(i)}</td><td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${i.id}">Cancel</button></td></tr>`).join('')}
+        $('#queueTable').innerHTML = `<div class="table-wrap"><table class="stack" style="--cols:1"><thead><tr><th>#</th><th>${t('Change')}</th><th></th></tr></thead><tbody>
+            ${q.map(i => `<tr><td class="num hint d-only">${i.id}</td><td>${describeQueueItem(i)}</td><td class="actions"><button class="btn sm" data-action="cancel-queue" data-id="${i.id}">${t('Cancel')}</button></td></tr>`).join('')}
         </tbody></table></div>`;
     });
 }
 
 async function cancelQueue(id) {
-    if (!await confirmDialog('Cancel this pending change?', 'It will be removed from the queue and never applied.', { okLabel: 'Cancel change', danger: true })) return;
+    if (!await confirmDialog(t('Cancel this pending change?'), t('It will be removed from the queue and never applied.'), { okLabel: t('Cancel change'), danger: true })) return;
     try {
         const r = await api(`/server/queue/${id}`, { method: 'DELETE' });
-        if (r.ok) toast('success', 'Pending change cancelled');
-        else if (r.status === 409 || r.status === 404) toast('info', 'Already applied', 'This change has already reached the kid\'s computer.');
-        else toast('error', 'Could not cancel', r.json.message || `Error ${r.status}`);
-    } catch (e) { toast('error', 'Could not cancel', e.message); }
+        if (r.ok) toast('success', t('Pending change cancelled'));
+        else if (r.status === 409 || r.status === 404) toast('info', t('Already applied'), t("This change has already reached the kid's computer."));
+        else toast('error', t('Could not cancel'), r.json.message || t('Error {n}', { n: r.status }));
+    } catch (e) { toast('error', t('Could not cancel'), e.message); }
     refresh();
 }
 
@@ -2373,10 +2815,10 @@ function renderSettingsInfo() {
     let size = 0;
     try { size = (localStorage.getItem(LS_BUFFER) || '').length + (localStorage.getItem(LS_HISTORY) || '').length; } catch (e) { /* ignore */ }
     $('#bufferInfo').innerHTML = [
-        ['Last snapshot', buf ? fmtTime(buf.savedAt) : 'None'],
-        ["Kid's PC last seen", lastSeenMs() ? fmtTime(lastSeenMs()) : 'Unknown'],
-        ['Usage samples', `${S.history.length} (${todaySamples} today)`],
-        ['Storage used', `${(size / 1024).toFixed(1)} KB`],
+        [t('Last snapshot'), buf ? fmtTime(buf.savedAt) : t('None')],
+        [t("Kid's PC last seen"), lastSeenMs() ? fmtTime(lastSeenMs()) : t('Unknown')],
+        [t('Usage samples'), t('{n} ({today} today)', { n: S.history.length, today: todaySamples })],
+        [t('Storage used'), `${(size / 1024).toFixed(1)} KB`],
     ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
     if (S.data && S.data.config) {
         renderOnce('config', JSON.stringify(S.data.config), () => { $('#configJson').textContent = JSON.stringify(S.data.config, null, 2); });
@@ -2395,11 +2837,11 @@ function downloadFile(name, text) {
 async function uploadConfig(file) {
     let cfg;
     try { cfg = JSON.parse(await file.text()); }
-    catch (e) { toast('error', 'Invalid file', 'That file is not valid JSON.'); return; }
+    catch (e) { toast('error', t('Invalid file'), t('That file is not valid JSON.')); return; }
     const parts = ['limits', 'exceptions', 'night_lockdown'].filter(k => k in cfg);
-    if (!parts.length) { toast('error', 'Nothing to upload', 'The file needs a "limits", "exceptions" or "night_lockdown" section.'); return; }
-    if (!await confirmDialog('Replace configuration?', `This overwrites ${parts.join(', ')} on the kid's computer with the contents of ${file.name}.`, { okLabel: 'Replace', danger: true, icon: 'warn' })) return;
-    await mutate('POST', '/config', cfg, { what: 'Configuration upload' });
+    if (!parts.length) { toast('error', t('Nothing to upload'), t('The file needs a "limits", "exceptions" or "night_lockdown" section.')); return; }
+    if (!await confirmDialog(t('Replace configuration?'), t("This overwrites {parts} on the kid's computer with the contents of {file}.", { parts: parts.join(', '), file: file.name }), { okLabel: t('Replace'), danger: true, icon: 'warn' })) return;
+    await mutate('POST', '/config', cfg, { what: t('Configuration upload') });
 }
 
 /* =====================================================================
@@ -2446,7 +2888,7 @@ document.addEventListener('click', async e => {
     const nlCopy = e.target.closest('[data-nl-copy]');
     if (nlCopy) {
         const src = S.nl.days[nlCopy.dataset.nlCopy];
-        if (!await confirmDialog(`Copy ${nlCopy.dataset.nlCopy} to every day?`, 'All other days will get the same blocked and whitelisted zones. Nothing is saved until you press Save.', { okLabel: 'Copy' })) return;
+        if (!await confirmDialog(t('Copy {day} to every day?', { day: t(nlCopy.dataset.nlCopy) }), t('All other days will get the same blocked and whitelisted zones. Nothing is saved until you press Save.'), { okLabel: t('Copy') })) return;
         DAYS.forEach(d => { S.nl.days[d] = JSON.parse(JSON.stringify(src)); });
         setNlDirty(true); renderLockdown(); return;
     }
@@ -2466,22 +2908,22 @@ document.addEventListener('click', async e => {
             try {
                 const r = await api('/server/sync', { method: 'POST', timeout: 30000 });
                 const d = r.json.data || {};
-                toast(d.failed ? 'warning' : 'success', 'Sync finished', `${d.synced || 0} applied, ${d.failed || 0} failed.`);
-            } catch (err) { toast('error', 'Sync failed', err.message); }
+                toast(d.failed ? 'warning' : 'success', t('Sync finished'), t('{a} applied, {b} failed.', { a: d.synced || 0, b: d.failed || 0 }));
+            } catch (err) { toast('error', t('Sync failed'), err.message); }
             refresh();
             break;
         case 'clear-queue':
-            if (!await confirmDialog('Discard all pending changes?', 'Every queued change will be deleted and never applied. This cannot be undone.', { okLabel: 'Discard all', danger: true })) return;
+            if (!await confirmDialog(t('Discard all pending changes?'), t('Every queued change will be deleted and never applied. This cannot be undone.'), { okLabel: t('Discard all'), danger: true })) return;
             try {
                 const r = await api('/server/queue/clear', { method: 'POST' });
-                r.ok ? toast('success', 'Queue cleared') : toast('error', 'Could not clear queue', r.json.message || '');
-            } catch (err) { toast('error', 'Could not clear queue', err.message); }
+                r.ok ? toast('success', t('Queue cleared')) : toast('error', t('Could not clear queue'), r.json.message || '');
+            } catch (err) { toast('error', t('Could not clear queue'), err.message); }
             refresh();
             break;
         case 'download-config':
-            if (!S.data || !S.data.config) { toast('error', 'No configuration loaded yet'); return; }
+            if (!S.data || !S.data.config) { toast('error', t('No configuration loaded yet')); return; }
             downloadFile(`pcv2_config_${localDate()}.json`, JSON.stringify(S.data.config, null, 2));
-            toast('success', 'Configuration downloaded');
+            toast('success', t('Configuration downloaded'));
             break;
         case 'upload-config': $('#configFile').click(); break;
         case 'export-buffer':
@@ -2489,10 +2931,10 @@ document.addEventListener('click', async e => {
             break;
         case 'sign-out': signOut(); break;
         case 'clear-buffer':
-            if (!await confirmDialog('Clear the browser buffer?', 'Buffered snapshots and usage samples stored in this browser will be deleted. Nothing on the kid\'s computer changes.', { okLabel: 'Clear', danger: true })) return;
+            if (!await confirmDialog(t('Clear the browser buffer?'), t("Buffered snapshots and usage samples stored in this browser will be deleted. Nothing on the kid's computer changes."), { okLabel: t('Clear'), danger: true })) return;
             try { localStorage.removeItem(LS_BUFFER); localStorage.removeItem(LS_HISTORY); } catch (err) { /* ignore */ }
             S.history = []; S.lastSampleAt = 0;
-            toast('success', 'Browser buffer cleared');
+            toast('success', t('Browser buffer cleared'));
             renderAll();
             break;
     }
@@ -2524,16 +2966,17 @@ document.addEventListener('change', e => {
 });
 
 $('#nlSave').addEventListener('click', saveNl);
-$('#nlDiscard').addEventListener('click', () => { setNlDirty(false); S.rendered.nl = null; renderLockdown(); toast('info', 'Changes discarded'); });
+$('#nlDiscard').addEventListener('click', () => { setNlDirty(false); S.rendered.nl = null; renderLockdown(); toast('info', t('Changes discarded')); });
 $('#refreshBtn').addEventListener('click', () => refresh({ manual: true }));
 $('#themeBtn').addEventListener('click', () => setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark'));
+$('#langBtn').addEventListener('click', () => setLang(LANG === 'tr' ? 'en' : 'tr'));
 $('#excToday').addEventListener('click', () => { $('#excDate').value = dataDate(); renderExceptions(true); });
 $('#usageToday').addEventListener('click', () => { $('#usageDate').value = dataDate(); renderUsage(); });
 
 $('#settingsForm').addEventListener('submit', e => {
     e.preventDefault();
     const url = $('#setApi').value.trim();
-    if (url && !/^https?:\/\//i.test(url)) { toast('error', 'Invalid address', 'The API URL must start with http:// or https://'); return; }
+    if (url && !/^https?:\/\//i.test(url)) { toast('error', t('Invalid address'), t('The API URL must start with http:// or https://')); return; }
     const changedUrl = url !== settings.apiUrl;
     settings.apiUrl = url;
     settings.pollSec = Math.min(300, Math.max(2, parseInt($('#setPoll').value, 10) || 5));
@@ -2544,7 +2987,7 @@ $('#settingsForm').addEventListener('submit', e => {
     applyTheme();
     fillSettings();
     restartPolling();
-    toast('success', 'Settings saved');
+    toast('success', t('Settings saved'));
     if (changedUrl) { S.prevUsage = null; refresh({ manual: true }); }
 });
 
@@ -2560,6 +3003,7 @@ document.addEventListener('keydown', e => {
     if (e.target.closest('input, textarea, select, dialog')) return;
     if (e.key === 'r' && !e.metaKey && !e.ctrlKey) refresh({ manual: true });
     if (e.key === 't' && !e.metaKey && !e.ctrlKey) setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark');
+    if (e.key === 'l' && !e.metaKey && !e.ctrlKey) setLang(LANG === 'tr' ? 'en' : 'tr');
     if (e.key === 'e' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); exceptionDialog(null); }
 });
 
@@ -2630,6 +3074,9 @@ setInterval(() => { if (S.data) renderActivity(model()); renderSettingsInfo(); }
  * Boot
  * ===================================================================== */
 (function boot() {
+    collectStatic();
+    applyStatic();
+    applyTheme();
     fillSettings();
     $('#excDate').value = localDate();
     $('#usageDate').value = localDate();
