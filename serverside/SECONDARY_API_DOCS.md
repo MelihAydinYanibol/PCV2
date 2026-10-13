@@ -78,6 +78,11 @@ Every endpoint (and the dashboard at `/`) requires sign-in. Set `DASHBOARD_PASSW
 - Unauthenticated API calls get `401 {"status": "error", "auth": "required"}`.
 - Writes carrying an `Origin` header from another site get `403`.
 
+The secondary API also authenticates itself to the primary API on the kid's PC: set
+`PRIMARY_API_TOKEN` in `serverside/.env` to the same value as in `clientside/.env`. It is
+sent as `Authorization: Bearer <token>` on every forwarded request and status probe; the
+primary API rejects anything else with `401`.
+
 ```bash
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" http://YOUR_SERVER:5035/api/server/status
 ```
@@ -275,6 +280,9 @@ Check the `PRIMARY_API_URL` setting matches your primary API location:
 ```python
 PRIMARY_API_URL = 'http://127.0.0.1:5000/api'  # Adjust IP/port as needed
 ```
+
+If the log shows `Primary API rejected the token` (probe returns `401`), `PRIMARY_API_TOKEN`
+differs between `serverside/.env` and `clientside/.env`.
 
 ### Requests Not Syncing
 

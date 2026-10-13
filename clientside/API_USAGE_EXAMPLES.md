@@ -2,17 +2,45 @@
 
 ## Setup
 
-Install Flask:
+Install the dependencies:
 ```bash
-pip install flask
+pip install -r requirements.txt
 ```
+
+Create `clientside/.env` from the example and set a token:
+```bash
+copy .env.example .env      # cp on Linux/macOS
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+Paste the printed value as `PRIMARY_API_TOKEN=...` in `clientside/.env`, and the
+same value in `serverside/.env`.
 
 Run the API server:
 ```bash
 python api.py
 ```
 
-The API will start on `http://localhost:5000`
+The API will start on `http://localhost:5000` (set `PRIMARY_API_HOST` / `PRIMARY_API_PORT`
+to change this). It refuses to start without `PRIMARY_API_TOKEN` unless
+`PRIMARY_API_AUTH_DISABLED=true` is set.
+
+## Authentication
+
+Normally only the secondary API (`serverside/secondary_api.py`) talks to this API; the
+dashboard goes through it. Every `/api/*` request must carry the shared token:
+
+```
+Authorization: Bearer <PRIMARY_API_TOKEN>
+```
+
+Requests without it (or with a wrong token) get `401 Unauthorized`. There are no CORS
+headers, so web pages can't call this API from a browser.
+
+The `curl` examples below assume the token is in a shell variable:
+```bash
+export TOKEN=your-primary-api-token          # PowerShell: $env:TOKEN = "..."
+```
+and add `-H "Authorization: Bearer $TOKEN"` to every request.
 
 ---
 
@@ -22,7 +50,7 @@ The API will start on `http://localhost:5000`
 
 #### Get all time limits
 ```bash
-curl http://localhost:5000/api/limits
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/limits
 ```
 
 Response:
@@ -50,12 +78,12 @@ Response:
 
 #### Get limit for specific app
 ```bash
-curl http://localhost:5000/api/limits/chrome.exe
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/limits/chrome.exe
 ```
 
 #### Create new app limit
 ```bash
-curl -X POST http://localhost:5000/api/limits \
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:5000/api/limits \
   -H "Content-Type: application/json" \
   -d '{
     "app_name": "discord.exe",
@@ -73,7 +101,7 @@ curl -X POST http://localhost:5000/api/limits \
 
 #### Update all limits for an app
 ```bash
-curl -X PUT http://localhost:5000/api/limits/chrome.exe \
+curl -H "Authorization: Bearer $TOKEN" -X PUT http://localhost:5000/api/limits/chrome.exe \
   -H "Content-Type: application/json" \
   -d '{
     "limits": {
@@ -90,14 +118,14 @@ curl -X PUT http://localhost:5000/api/limits/chrome.exe \
 
 #### Update limit for specific day
 ```bash
-curl -X PUT http://localhost:5000/api/limits/chrome.exe/Monday \
+curl -H "Authorization: Bearer $TOKEN" -X PUT http://localhost:5000/api/limits/chrome.exe/Monday \
   -H "Content-Type: application/json" \
   -d '{"seconds": 7200}'
 ```
 
 #### Delete app from limits
 ```bash
-curl -X DELETE http://localhost:5000/api/limits/discord.exe
+curl -H "Authorization: Bearer $TOKEN" -X DELETE http://localhost:5000/api/limits/discord.exe
 ```
 
 ---
@@ -106,22 +134,22 @@ curl -X DELETE http://localhost:5000/api/limits/discord.exe
 
 #### Get all exceptions
 ```bash
-curl http://localhost:5000/api/exceptions
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/exceptions
 ```
 
 #### Get exceptions for a specific date
 ```bash
-curl http://localhost:5000/api/exceptions/2026-01-17
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/exceptions/2026-01-17
 ```
 
 #### Get exception for specific app on specific date
 ```bash
-curl http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
 ```
 
 #### Create/Update an exception (add 30 minutes extra)
 ```bash
-curl -X POST http://localhost:5000/api/exceptions \
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:5000/api/exceptions \
   -H "Content-Type: application/json" \
   -d '{
     "date": "2026-01-17",
@@ -133,7 +161,7 @@ curl -X POST http://localhost:5000/api/exceptions \
 
 #### Create exception with negative time (subtract 30 minutes)
 ```bash
-curl -X POST http://localhost:5000/api/exceptions \
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:5000/api/exceptions \
   -H "Content-Type: application/json" \
   -d '{
     "date": "2026-01-17",
@@ -145,7 +173,7 @@ curl -X POST http://localhost:5000/api/exceptions \
 
 #### Set exact limit for a day (override default)
 ```bash
-curl -X POST http://localhost:5000/api/exceptions \
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:5000/api/exceptions \
   -H "Content-Type: application/json" \
   -d '{
     "date": "2026-01-17",
@@ -157,7 +185,7 @@ curl -X POST http://localhost:5000/api/exceptions \
 
 #### Delete exception
 ```bash
-curl -X DELETE http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
+curl -H "Authorization: Bearer $TOKEN" -X DELETE http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
 ```
 
 ---
@@ -166,12 +194,12 @@ curl -X DELETE http://localhost:5000/api/exceptions/2026-01-17/chrome.exe
 
 #### Get night lockdown configuration
 ```bash
-curl http://localhost:5000/api/nightlockdown
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/nightlockdown
 ```
 
 #### Same schedule for every day
 ```bash
-curl -X PUT http://localhost:5000/api/nightlockdown \
+curl -H "Authorization: Bearer $TOKEN" -X PUT http://localhost:5000/api/nightlockdown \
   -H "Content-Type: application/json" \
   -d '{
     "enabled": true,
@@ -185,7 +213,7 @@ curl -X PUT http://localhost:5000/api/nightlockdown \
 
 #### Different schedule per day of the week
 ```bash
-curl -X PUT http://localhost:5000/api/nightlockdown \
+curl -H "Authorization: Bearer $TOKEN" -X PUT http://localhost:5000/api/nightlockdown \
   -H "Content-Type: application/json" \
   -d '{
     "enabled": true,
@@ -208,12 +236,12 @@ window, the computer is shut down.
 
 #### Get all usage data
 ```bash
-curl http://localhost:5000/api/usage
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/usage
 ```
 
 #### Get usage for specific date
 ```bash
-curl http://localhost:5000/api/usage/2026-01-17
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/usage/2026-01-17
 ```
 
 Response:
@@ -230,7 +258,7 @@ Response:
 
 #### Get usage for specific app on specific date
 ```bash
-curl http://localhost:5000/api/usage/2026-01-17/chrome.exe
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/usage/2026-01-17/chrome.exe
 ```
 
 Response:
@@ -243,7 +271,7 @@ Response:
 
 #### Update usage (useful for corrections)
 ```bash
-curl -X PUT http://localhost:5000/api/usage/2026-01-17/chrome.exe \
+curl -H "Authorization: Bearer $TOKEN" -X PUT http://localhost:5000/api/usage/2026-01-17/chrome.exe \
   -H "Content-Type: application/json" \
   -d '{"seconds": 5400}'
 ```
@@ -254,7 +282,7 @@ curl -X PUT http://localhost:5000/api/usage/2026-01-17/chrome.exe \
 
 #### Get current system status
 ```bash
-curl http://localhost:5000/api/status
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/status
 ```
 
 Response:
@@ -272,12 +300,12 @@ Response:
 
 #### Get full configuration (limits + exceptions)
 ```bash
-curl http://localhost:5000/api/config
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/config
 ```
 
 #### Upload full configuration
 ```bash
-curl -X POST http://localhost:5000/api/config \
+curl -H "Authorization: Bearer $TOKEN" -X POST http://localhost:5000/api/config \
   -H "Content-Type: application/json" \
   -d '{
     "limits": {
@@ -315,10 +343,14 @@ curl -X POST http://localhost:5000/api/config \
 
 ### Add a new app to monitor
 ```python
+import os
 import requests
+
+HEADERS = {'Authorization': f"Bearer {os.environ['PRIMARY_API_TOKEN']}"}
 
 response = requests.post(
     'http://localhost:5000/api/limits',
+    headers=HEADERS,
     json={
         'app_name': 'spotify.exe',
         'limits': {
@@ -337,13 +369,17 @@ print(response.json())
 
 ### Grant extra time today
 ```python
+import os
 import requests
+
+HEADERS = {'Authorization': f"Bearer {os.environ['PRIMARY_API_TOKEN']}"}
 from datetime import datetime
 
 today = datetime.now().strftime("%Y-%m-%d")
 
 response = requests.post(
     'http://localhost:5000/api/exceptions',
+    headers=HEADERS,
     json={
         'date': today,
         'app_name': 'chrome.exe',
@@ -356,17 +392,20 @@ print(response.json())
 
 ### Check today's status
 ```python
+import os
 import requests
+
+HEADERS = {'Authorization': f"Bearer {os.environ['PRIMARY_API_TOKEN']}"}
 from datetime import datetime
 
 today = datetime.now().strftime("%Y-%m-%d")
 
 # Get today's usage
-usage_resp = requests.get(f'http://localhost:5000/api/usage/{today}')
+usage_resp = requests.get(f'http://localhost:5000/api/usage/{today}', headers=HEADERS)
 print("Today's usage:", usage_resp.json())
 
 # Get today's exceptions
-exc_resp = requests.get(f'http://localhost:5000/api/exceptions/{today}')
+exc_resp = requests.get(f'http://localhost:5000/api/exceptions/{today}', headers=HEADERS)
 print("Today's exceptions:", exc_resp.json())
 ```
 
@@ -377,6 +416,7 @@ print("Today's exceptions:", exc_resp.json())
 - **200**: Successful GET or PUT request
 - **201**: Successful POST request (resource created)
 - **400**: Bad request (missing or invalid data)
+- **401**: Missing or wrong `Authorization: Bearer <PRIMARY_API_TOKEN>` header
 - **404**: Resource not found
 - **409**: Conflict (e.g., app already exists)
 - **500**: Internal server error
