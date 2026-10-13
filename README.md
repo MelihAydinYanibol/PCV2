@@ -36,7 +36,10 @@ ParentalControlsV2/
 │   └── used_exceptions.json  # Tracking of used exceptions
 │
 ├── serverside/              # Central dashboard and proxy
-│   ├── secondary_api.py     # Buffering proxy API (PORT 5001)
+│   ├── secondary_api.py     # Buffering proxy API (PORT 5035)
+│   ├── auth.py               # Password sign-in, sessions, security headers
+│   ├── login.html            # Sign-in page
+│   ├── .env.example          # Copy to .env and set DASHBOARD_PASSWORD
 │   ├── dashboard.html        # Web dashboard UI
 │   ├── requirements.txt       # Python dependencies
 │   └── request_queue.db      # SQLite queue for offline requests
@@ -124,10 +127,27 @@ python secondary_api.py
 ```
 The secondary API will start on `http://localhost:5001`
 
-#### Step 4: Access Dashboard
-1. Open `http://YOUR_SERVER:5035/` — the secondary API serves the dashboard itself, so it talks to the API on the same address with no configuration.
-2. Alternatively open `serverside/dashboard.html` directly; it defaults to `http://127.0.0.1:5035/api`, which you can change under **Settings** (stored in the browser).
-3. Configure time limits, exceptions, and monitor usage
+#### Step 4: Set the dashboard password
+```bash
+cd serverside
+copy .env.example .env      # cp on Linux/macOS
+```
+Edit `serverside/.env` and set `DASHBOARD_PASSWORD` to a long passphrase. To keep only a hash on disk instead,
+run `python auth.py --hash` and paste the printed `DASHBOARD_PASSWORD_HASH=...` line in place of `DASHBOARD_PASSWORD`.
+The server refuses to start without one of them.
+
+#### Step 5: Access Dashboard
+1. Open `http://YOUR_SERVER:5035/` and sign in with the password. Your browser (e.g. Google Password Manager) offers to save it, and fills it in next time.
+2. Configure time limits, exceptions, and monitor usage
+
+**Sign-in & security**
+- Password only, no username. It is compared in constant time (or checked against the scrypt hash).
+- Sessions are random tokens stored server-side (only their SHA-256), in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS); they last `SESSION_DAYS` (default 30). **Sign out** in Settings ends the session on the server and can wipe the browser buffer.
+- After 5 wrong passwords from one address, sign-in is locked for 30 s, doubling with each further miss (max 15 min).
+- Every write must come from the dashboard's own origin (CSRF protection), there are no CORS headers, and pages send a strict Content-Security-Policy, `X-Frame-Options: DENY` and `no-store` caching.
+- Scripts can call the API with `Authorization: Bearer <DASHBOARD_API_TOKEN>` if you set that variable.
+- The dashboard must now be opened through the server; opening `dashboard.html` as a local file no longer works.
+- On the open internet, put the server behind HTTPS (e.g. Caddy or nginx) and set `TRUST_PROXY=true` and `COOKIE_SECURE=true`.
 
 **Dashboard highlights**
 - **Overview** with a live countdown of the computer time left today. It takes the overall limit, every exception (add / remove / set exact) and the next night lockdown into account, and shows the time left per app (capped by the computer's own time left).

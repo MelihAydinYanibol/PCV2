@@ -823,7 +823,7 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
             <div class="card">
                 <div class="card-title">Dashboard</div>
                 <form id="settingsForm" class="grid" style="gap:14px">
-                    <label class="field"><span>Server API URL</span><input id="setApi" class="input mono" placeholder="http://127.0.0.1:5035/api"><span class="hint">Address of <span class="mono">secondary_api.py</span>. Leave empty to use the server that served this page.</span></label>
+                    <label class="field"><span>Server API URL</span><input id="setApi" class="input mono" placeholder="http://127.0.0.1:5035/api"><span class="hint">Address of <span class="mono">secondary_api.py</span>. Leave empty (recommended) to use the server that served this page — with sign-in enabled the dashboard can only talk to its own server.</span></label>
                     <div class="form-grid">
                         <label class="field"><span>Refresh every (seconds)</span><input id="setPoll" type="number" min="2" max="300" class="input"></label>
                         <label class="field"><span>Buffer a sample every (seconds)</span><input id="setBuffer" type="number" min="10" max="3600" class="input"></label>
@@ -842,6 +842,13 @@ pre.json { background: var(--surface-2); border: 1px solid var(--border); border
                     <button class="btn" data-action="export-buffer">Download buffer</button>
                     <button class="btn danger" data-action="clear-buffer">Clear buffer</button>
                 </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+            <div class="row" style="justify-content:space-between">
+                <div><div class="card-title" style="margin-bottom:2px">Account</div><span class="hint">You are signed in on this device. The password is set in <span class="mono">serverside/.env</span>.</span></div>
+                <button class="btn" data-action="sign-out">Sign out</button>
             </div>
         </div>
 
@@ -1204,6 +1211,29 @@ function model() {
 /* =====================================================================
  * Networking
  * ===================================================================== */
+function goToLogin() {
+    if (S.redirecting) return;
+    S.redirecting = true;
+    S.nlDirty = false;  // don't block the redirect with the unsaved-changes prompt
+    location.href = '/login?next=' + encodeURIComponent(location.pathname + location.hash);
+}
+
+async function signOut() {
+    const r = await openDialog({
+        title: 'Sign out?', subtitle: 'You will need the dashboard password to sign in again.', icon: 'question',
+        body: '<label class="check"><input type="checkbox" name="wipe" checked> Also delete the data buffered in this browser</label><p class="hint" style="margin-top:6px">Recommended on a shared or borrowed device.</p>',
+        actions: [{ label: 'Cancel', value: null, kind: 'ghost' }, { label: 'Sign out', value: 'out', kind: 'primary', submit: true }],
+    });
+    if (r.value !== 'out') return;
+    if (r.form.wipe.checked) {
+        try { localStorage.removeItem(LS_BUFFER); localStorage.removeItem(LS_HISTORY); } catch (e) { /* ignore */ }
+    }
+    S.redirecting = true;
+    S.nlDirty = false;
+    try { await fetch('/logout', { method: 'POST', cache: 'no-store' }); } catch (e) { /* still leave */ }
+    location.href = '/login';
+}
+
 async function api(path, { method = 'GET', body, timeout = REQUEST_TIMEOUT } = {}) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeout);
@@ -1217,6 +1247,11 @@ async function api(path, { method = 'GET', body, timeout = REQUEST_TIMEOUT } = {
         });
         let json = null;
         try { json = await res.json(); } catch (e) { /* empty body */ }
+        if (res.status === 401 && json && json.auth === 'required') {
+            // Session expired or signed out elsewhere: go to the sign-in page and come back here afterwards
+            goToLogin();
+            throw new Error('Sign-in required');
+        }
         return { ok: res.ok, status: res.status, json: json || {} };
     } catch (e) {
         if (e.name === 'AbortError') throw new Error('The server took too long to answer');
@@ -2452,6 +2487,7 @@ document.addEventListener('click', async e => {
         case 'export-buffer':
             downloadFile(`pcv2_buffer_${localDate()}.json`, JSON.stringify({ buffer: lsGet(LS_BUFFER, null), history: S.history }, null, 2));
             break;
+        case 'sign-out': signOut(); break;
         case 'clear-buffer':
             if (!await confirmDialog('Clear the browser buffer?', 'Buffered snapshots and usage samples stored in this browser will be deleted. Nothing on the kid\'s computer changes.', { okLabel: 'Clear', danger: true })) return;
             try { localStorage.removeItem(LS_BUFFER); localStorage.removeItem(LS_HISTORY); } catch (err) { /* ignore */ }

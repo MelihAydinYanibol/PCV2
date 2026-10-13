@@ -68,6 +68,20 @@ Background Worker → Checks Primary Status → Syncs all queued requests
                   → Primary API processes them → Queue cleared
 ```
 
+## Authentication
+
+Every endpoint (and the dashboard at `/`) requires sign-in. Set `DASHBOARD_PASSWORD`
+(or `DASHBOARD_PASSWORD_HASH`, made with `python auth.py --hash`) in `serverside/.env`.
+
+- Browsers: sign in at `/login`; a session cookie is set. `POST /logout` ends it.
+- Scripts: set `DASHBOARD_API_TOKEN` in `.env` and send `Authorization: Bearer <token>`.
+- Unauthenticated API calls get `401 {"status": "error", "auth": "required"}`.
+- Writes carrying an `Origin` header from another site get `403`.
+
+```bash
+curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" http://YOUR_SERVER:5035/api/server/status
+```
+
 ## Endpoints
 
 ### Standard API Endpoints (Proxy)
@@ -333,10 +347,10 @@ sudo systemctl status parental-secondary-api
 
 ## Security Notes
 
-⚠️ **Important**: This setup is for **local network only**. For production/internet deployment:
+Password sign-in, CSRF protection and brute-force lockout are built in (see `auth.py`). For internet deployment also:
 
-1. Add authentication (API keys, OAuth)
-2. Use HTTPS/TLS encryption
+1. Use HTTPS/TLS encryption (reverse proxy) and set `TRUST_PROXY=true`, `COOKIE_SECURE=true`
+2. Prefer `DASHBOARD_PASSWORD_HASH` over a plain password
 3. Validate all input data
 4. Add rate limiting
 5. Use proper firewall rules
