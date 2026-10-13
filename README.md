@@ -125,9 +125,16 @@ python secondary_api.py
 The secondary API will start on `http://localhost:5001`
 
 #### Step 4: Access Dashboard
-1. If using serverside: Open `serverside/dashboard.html` in a browser
-2. Update the API URL in the dashboard HTML to match your server (default: `http://127.0.0.1:5001/api`)
+1. Open `http://YOUR_SERVER:5035/` — the secondary API serves the dashboard itself, so it talks to the API on the same address with no configuration.
+2. Alternatively open `serverside/dashboard.html` directly; it defaults to `http://127.0.0.1:5035/api`, which you can change under **Settings** (stored in the browser).
 3. Configure time limits, exceptions, and monitor usage
+
+**Dashboard highlights**
+- **Overview** with a live countdown of the computer time left today. It takes the overall limit, every exception (add / remove / set exact) and the next night lockdown into account, and shows the time left per app (capped by the computer's own time left).
+- One-click **+15m / +30m / +1h** exceptions, plus a dialog that previews the new limit before you apply it.
+- Toast notifications and confirmation dialogs for every change; queued changes (made while the kid's PC is off) are marked and can be cancelled.
+- **Browser buffer**: the latest data and periodic usage samples (interval configurable under Settings) are kept in the browser's localStorage. When the kid's PC is off the dashboard shows the server's cached data with a "last seen" time; if the server itself is unreachable it falls back to the browser buffer. The page also paints instantly from the buffer on load.
+- One batched request per refresh (`GET /api/dashboard/data`, which now also returns today's usage and the pending queue), request timeouts, and polling that pauses while the tab is hidden.
 
 ## 📚 API Documentation
 
