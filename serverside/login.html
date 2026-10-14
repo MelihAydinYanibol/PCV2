@@ -15,6 +15,12 @@
     if (m) document.documentElement.setAttribute('data-theme', m[1]);
     var l = document.cookie.match(/(?:^|;\s*)pcv2_lang=(tr|en)/);
     var lang = l ? l[1] : ((navigator.language || '').toLowerCase().indexOf('tr') === 0 ? 'tr' : 'en');
+    // Deep link: /login?lang=tr, or a lang in the page we will return to (?next=/?lang=tr…)
+    try {
+        var qs = new URLSearchParams(location.search), q = qs.get('lang');
+        if (!q && qs.get('next')) q = new URLSearchParams((qs.get('next').split('?')[1] || '').split('#')[0]).get('lang');
+        if (q === 'tr' || q === 'en') { lang = q; document.cookie = 'pcv2_lang=' + q + '; max-age=' + (365 * 86400) + '; path=/; SameSite=Lax'; }
+    } catch (e) { /* keep cookie/browser choice */ }
     document.documentElement.lang = lang;
 })();
 </script>

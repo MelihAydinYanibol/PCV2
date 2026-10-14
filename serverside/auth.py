@@ -30,7 +30,7 @@ import sqlite3
 import sys
 import threading
 import time
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from flask import Response, jsonify, redirect, request, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -309,7 +309,13 @@ class Auth:
     # ------------------------------------------------------------------ views
     def _lang(self):
         """Language chosen with the dashboard's TR/EN button (pcv2_lang cookie)."""
-        return "tr" if request.cookies.get("pcv2_lang") == "tr" else "en"
+        lang = request.args.get("lang")
+        if lang not in ("tr", "en"):
+            nxt = request.args.get("next") or ""
+            lang = parse_qs(urlparse(nxt).query).get("lang", [None])[0]
+        if lang not in ("tr", "en"):
+            lang = request.cookies.get("pcv2_lang")
+        return "tr" if lang == "tr" else "en"
 
     def _login_page(self, error="", status=200):
         with open(os.path.join(SERVERSIDE_DIR, "login.html"), "r", encoding="utf-8") as f:

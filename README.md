@@ -196,7 +196,7 @@ it can't trick anyone into granting time.
         widget:
           type: iframe
           name: pcv2
-          src: https://pcv2.example.com/widget?theme=dark
+          src: https://pcv2.example.com/widget?theme=dark&hide=title
           classes: h-56            # any height works — the layout adapts
           allowScrolling: no
 ```
@@ -219,7 +219,7 @@ and `/api/widget/data` through it or share its session cookie as usual.)
 | `view` | `auto` · `mini` · `compact` · `full` | force a layout instead of choosing by size |
 | `apps` | `chrome.exe,discord.exe` · `none` | which app rows to show |
 | `max` | number | max app rows (default 8) |
-| `hide` | `header,ring,bar,button,apps,footer` | hide parts |
+| `hide` | `title,header,ring,bar,button,apps,footer` | hide parts (`title` keeps the online dot — use it when the Homepage card already shows a name) |
 | `title` | text | header text |
 | `lang` | `en` · `tr` | language (default: your dashboard choice) |
 | `refresh` | seconds (≥10) | update interval (default 30) |
@@ -250,7 +250,9 @@ fields, so Homepage's `customapi` widget can show them directly:
 ```
 
 The dashboard also accepts deep links: `/?action=exception&app=chrome.exe&secs=900` opens the
-exception dialog prefilled (it still has to be confirmed).
+exception dialog prefilled (it still has to be confirmed), and `?lang=tr` / `?lang=en` (on the
+dashboard or `/login`) switches the language and remembers it. The widget's buttons pass its own
+language along, so the dashboard opens in the same language.
 
 ## 📚 API Documentation
 

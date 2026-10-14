@@ -1286,6 +1286,9 @@ const TR_HTML = {
 
 const LANG_COOKIE = 'pcv2_lang';
 let LANG = (() => {
+    // Deep link: /?lang=tr or /?lang=en switches the language and remembers it
+    const q = new URLSearchParams(location.search).get('lang');
+    if (q === 'tr' || q === 'en') { setCookie(LANG_COOKIE, q); return q; }
     const c = getCookie(LANG_COOKIE);
     if (c === 'tr' || c === 'en') return c;
     return (navigator.language || '').toLowerCase().startsWith('tr') ? 'tr' : 'en';
@@ -1446,7 +1449,7 @@ function fmtClock(sec) {
     sec = Math.max(0, Math.floor(sec));
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
     const p = n => String(n).padStart(2, '0');
-    return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+    return `${h}:${p(m)}:${p(s)}`;  // always H:MM:SS so 0:02:50 never reads as 2h 50m
 }
 function fmtAgo(ms) {
     if (!ms) return t('never');

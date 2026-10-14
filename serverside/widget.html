@@ -21,7 +21,8 @@
     view=auto|mini|compact|full  force a layout instead of choosing by size
     apps=chrome.exe,discord.exe  only these apps (apps=none hides the list)
     max=6                      max app rows
-    hide=header,ring,bar,button,apps,footer   parts to hide
+    hide=title,header,ring,bar,button,apps,footer   parts to hide (title keeps the
+                               online dot; handy when the host card already shows a name)
     title=Kids PC              header text
     lang=en|tr                 language (default: dashboard choice / browser)
     refresh=30                 seconds between updates (min 10)
@@ -77,17 +78,19 @@ a { color: inherit; text-decoration: none; }
 .st.on { color: var(--ok); } .st.on .dot { background: var(--ok); animation: pulse 2s infinite; }
 .st.off { color: var(--warn); } .st.off .dot { background: var(--warn); }
 .st.err { color: var(--danger); } .st.err .dot { background: var(--danger); }
+.st .ago { font-weight: 550; opacity: .85; }
+@container w (max-width: 300px) { .st .ago { display: none; } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: none; } }
 
 .main { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 0 0 auto; }
 .hero { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.ring { width: 54px; height: 54px; flex: 0 0 auto; position: relative; }
+.ring { --ring: 70px; width: var(--ring); height: var(--ring); flex: 0 0 auto; position: relative; }
 .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring .trk { stroke: var(--track); }
 .ring .bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .6s ease, stroke .3s; }
 .ring.warn .bar { stroke: var(--warn); } .ring.danger .bar { stroke: var(--danger); } .ring.ok .bar { stroke: var(--ok); }
-.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: .78em; font-weight: 700; color: var(--text-2); }
-.hx { min-width: 0; flex: 1; }
+.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--ring) * .22 * var(--scale)); font-weight: 700; color: var(--text-2); }
+.hx { min-width: 0; flex: 1; overflow: hidden; }
 .lbl { font-size: .8em; color: var(--text-3); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .big { font-weight: 750; letter-spacing: -.02em; line-height: 1.05; white-space: nowrap; font-size: calc(clamp(20px, min(11cqw, 22cqh), 46px) * var(--scale)); }
 .big.warn { color: var(--warn); } .big.danger { color: var(--danger); }
@@ -119,6 +122,14 @@ a { color: inherit; text-decoration: none; }
 .plus:hover { filter: brightness(1.1); }
 .app .meter { grid-column: 1 / -1; height: 4px; }
 .empty { color: var(--text-3); font-size: .85em; }
+/* Shown in place of the app list when there are no per-app limits */
+.facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 12px; align-content: center; font-size: .86em; }
+.facts dt { color: var(--text-3); white-space: nowrap; }
+.facts dd { text-align: right; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.facts dd small { color: var(--text-3); font-weight: 550; }
+.facts dd .rel { display: none; }
+@container w (max-width: 300px) { .facts dd .rel { display: inline; } }
+.facts dd.danger { color: var(--danger); } .facts dd.warn { color: var(--warn); } .facts dd.on { color: var(--ok); }
 
 .ft { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--text-3); font-size: .75em; flex: 0 0 auto; margin-top: auto; }
 .chip { padding: 1px 7px; border-radius: 999px; background: var(--surface-2); font-weight: 600; white-space: nowrap; }
@@ -132,18 +143,22 @@ a { color: inherit; text-decoration: none; }
 /* ---------------- size-driven layouts ---------------- */
 /* Wide and tall enough: hero on the left, app list on the right */
 @container w (min-width: 520px) and (min-height: 170px) {
-    .in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 18px; }
+    .in { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 20px; }
+    .big { font-size: calc(clamp(20px, min(7cqw, 20cqh), 46px) * var(--scale)); }
     .hd { grid-column: 1 / -1; }
     .main { grid-column: 1; grid-row: 2; justify-content: center; }
     .apps { grid-column: 2; grid-row: 2; }
     .ft { grid-column: 1 / -1; }
-    .ring { width: 72px; height: 72px; }
+    .ring { --ring: 86px; }
 }
+/* The facts panel needs room; in the stacked layout it goes before anything gets cut off */
+@container w (max-height: 250px) and (max-width: 519px) { .facts { display: none; } }
+.has-facts .ft { display: none; }   /* facts already say when it was last seen */
 /* Short: drop the footer */
 @container w (max-height: 260px) { .ft { display: none; } }
 /* Shorter: drop the app list */
 @container w (max-height: 190px) and (max-width: 519px) { .apps { display: none; } }
-@container w (max-height: 150px) { .apps { display: none; } .ring { width: 44px; height: 44px; } }
+@container w (max-height: 150px) { .apps { display: none; } .ring { --ring: 56px; } }
 /* Strip: one row — time + button */
 @container w (max-height: 110px) {
     .in { flex-direction: row; align-items: center; padding: 6px 10px; gap: 10px; }
@@ -151,7 +166,7 @@ a { color: inherit; text-decoration: none; }
     .main { flex: 1; min-width: 0; flex-direction: row; align-items: center; gap: 10px; }
     .hero { flex: 1; }
     .meter.main-meter { display: none; }
-    .ring { width: 38px; height: 38px; }
+    .ring { --ring: 46px; }
     .ring .pct { display: none; }
     .acts .ghost { display: none; }
 }
@@ -161,7 +176,7 @@ a { color: inherit; text-decoration: none; }
     .acts .btn.grow { flex: 0 0 auto; padding: 6px 8px; }
     .acts .btn .txt { display: none; }
 }
-@container w (max-width: 260px) { .acts .ghost { display: none; } .ring { width: 42px; height: 42px; } }
+@container w (max-width: 260px) { .acts .ghost { display: none; } .ring { --ring: 56px; } }
 
 /* Forced layouts (?view=…) */
 .v-mini .ring, .v-mini .sub, .v-mini .apps, .v-mini .ft, .v-mini .hd, .v-mini .main-meter, .v-mini .ghost { display: none !important; }
@@ -171,6 +186,8 @@ a { color: inherit; text-decoration: none; }
 .v-compact .apps, .v-compact .ft { display: none !important; }
 
 /* ?hide=… */
+.h-title .ttl { visibility: hidden; }
+.no-lock .main-meter { display: none !important; }
 .h-header .hd, .h-ring .ring, .h-bar .meter, .h-button .acts, .h-apps .apps, .h-footer .ft { display: none !important; }
 </style>
 </head>
@@ -236,7 +253,9 @@ a { color: inherit; text-decoration: none; }
         'updated {t}': 'güncellendi {t}', 'Sign in to PCV2': 'PCV2’ye giriş yapın', 'Sign in': 'Giriş yap',
         'This widget needs your dashboard sign-in, or a key= from WIDGET_TOKEN.': 'Bu widget panel girişinize veya WIDGET_TOKEN’dan bir key= değerine ihtiyaç duyar.',
         'Cannot reach PCV2': 'PCV2’ye ulaşılamıyor', 'Retrying…': 'Tekrar deneniyor…',
-        'Add exception for {app}': '{app} için istisna ekle', 'Whole computer': 'Tüm bilgisayar', 'Lockdown active': 'Kilit etkin',
+        'Add exception for {app}': '{app} için istisna ekle',
+        'Used today': 'Bugün kullanılan', "Today's limit": 'Bugünkü sınır', 'Pending changes': 'Bekleyen değişiklikler',
+        'Last seen': 'Son görülme', 'exception': 'istisna', 'Off': 'Kapalı', 'Active until {t}': '{t} saatine kadar etkin', 'Active': 'Etkin', 'Whole computer': 'Tüm bilgisayar', 'Lockdown active': 'Kilit etkin',
         'h': 'sa', 'm': 'dk', 's': 'sn', 'just now': 'az önce', '{n}m ago': '{n} dk önce', '{n}h ago': '{n} sa önce', '{n}d ago': '{n} gün önce',
     };
     const t = (k, v) => {
@@ -255,9 +274,16 @@ a { color: inherit; text-decoration: none; }
     const clock = sec => {
         sec = Math.max(0, Math.floor(sec));
         const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = n => String(n).padStart(2, '0');
-        return h ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+        return `${h}:${p(m)}:${p(s)}`;  // always H:MM:SS so 0:02:50 never reads as 2h 50m
     };
     const hhmm = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString(LANG === 'tr' ? 'tr-TR' : [], { hour: '2-digit', minute: '2-digit' }); };
+    // Absolute "last seen": time only if today, otherwise short date + time
+    const stamp = ms => {
+        const d = new Date(ms); if (isNaN(d)) return '—';
+        const loc = LANG === 'tr' ? 'tr-TR' : [];
+        const time = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+        return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(loc, { day: 'numeric', month: 'short' })} ${time}`;
+    };
     const ago = ms => {
         const s = Math.max(0, (Date.now() - ms) / 1000);
         if (s < 60) return t('just now');
@@ -266,7 +292,7 @@ a { color: inherit; text-decoration: none; }
         return t('{n}d ago', { n: Math.floor(s / 86400) });
     };
     const level = (rem, lim) => (rem <= 300 || (lim > 0 && rem / lim < 0.1)) ? 'danger' : (rem <= 900 || (lim > 0 && rem / lim < 0.25)) ? 'warn' : '';
-    const link = (app, secs) => `${dash}/?action=exception${app ? '&app=' + encodeURIComponent(app) : ''}${secs ? '&secs=' + secs : ''}`;
+    const link = (app, secs) => `${dash}/?action=exception${app ? '&app=' + encodeURIComponent(app) : ''}${secs ? '&secs=' + secs : ''}&lang=${LANG}`;
 
     /* ---------------- data ---------------- */
     const BUF = 'pcv2.widget.v1';
@@ -300,7 +326,7 @@ a { color: inherit; text-decoration: none; }
     function render() {
         if (state === 'auth') {
             $in.innerHTML = `<div class="msg"><b>${t('Sign in to PCV2')}</b><span>${t('This widget needs your dashboard sign-in, or a key= from WIDGET_TOKEN.')}</span>
-                <a class="btn" href="${esc(dash)}/login" target="${target}" rel="noopener">${t('Sign in')}</a></div>`;
+                <a class="btn" href="${esc(dash)}/login?lang=${LANG}" target="${target}" rel="noopener">${t('Sign in')}</a></div>`;
             return;
         }
         if (!D) {
@@ -309,8 +335,9 @@ a { color: inherit; text-decoration: none; }
         }
         const apps = (D.apps || []).filter(a => !opt.apps || opt.apps.includes(a.name)).slice(0, opt.max);
         const showApps = !(opt.apps && opt.apps.length === 1 && opt.apps[0] === 'none');
+        w.classList.toggle('has-facts', showApps && !apps.length);
         $in.innerHTML = `
-            <div class="hd"><span class="ttl">${esc(opt.title || t('Parental Controls'))}</span><span class="st" id="st"><span class="dot"></span><span></span></span></div>
+            <div class="hd"><span class="ttl">${esc(opt.title || t('Parental Controls'))}</span><span class="st" id="st"><span class="dot"></span><span class="sl"></span><span class="ago"></span></span></div>
             <div class="main">
                 <div class="hero">
                     <div class="ring" id="ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16" fill="none" stroke-width="5"/><circle class="bar" id="rb" cx="20" cy="20" r="16" fill="none" stroke-width="5" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg><span class="pct" id="pct"></span></div>
@@ -319,18 +346,48 @@ a { color: inherit; text-decoration: none; }
                 <div class="meter main-meter" id="mm"><i></i></div>
                 <div class="acts">
                     <a class="btn grow" href="${esc(link(null))}" target="${target}" rel="noopener" title="${esc(t('Add exception'))}">${ICON_PLUS}<span class="txt">${t('Add exception')}</span></a>
-                    <a class="btn ghost" href="${esc(dash)}/" target="${target}" rel="noopener">${ICON_OPEN}<span class="txt">${t('Open')}</span></a>
+                    <a class="btn ghost" href="${esc(dash)}/?lang=${LANG}" target="${target}" rel="noopener">${ICON_OPEN}<span class="txt">${t('Open')}</span></a>
                 </div>
             </div>
-            ${showApps ? `<ul class="apps">${apps.length ? apps.map(a => `
+            ${showApps && !apps.length ? factsHtml() : ''}
+            ${showApps && apps.length ? `<ul class="apps">${apps.map(a => `
                 <li class="app" data-app="${esc(a.name)}">
                     <span class="an">${a.running ? '<span class="live"></span>' : ''}<span>${esc(a.name)}</span></span>
                     <span class="ar num"></span>
                     <a class="plus" href="${esc(link(a.name))}" target="${target}" rel="noopener" title="${esc(t('Add exception for {app}', { app: a.name }))}">+</a>
                     <div class="meter"><i></i></div>
-                </li>`).join('') : `<li class="empty">${t('No limits set')}</li>`}</ul>` : ''}
+                </li>`).join('')}</ul>` : ''}
             <div class="ft" id="ft"></div>`;
         tick();
+    }
+
+    // The status line already says "Offline · 12m ago", so the facts row shows the date/time;
+    // where the status line is too narrow for "ago", the row shows both
+    function seenHtml() {
+        if (D.online && state === 'ok') return esc(t('Online'));
+        const ms = state === 'ok' ? Date.parse(D.last_seen || '') : fetchedAt;
+        if (!ms) return '—';
+        return `<span id="f-seen">${esc(stamp(ms))}</span><small class="rel" id="f-rel"> · ${esc(ago(ms))}</small>`;
+    }
+
+    function factsHtml() {
+        const ov = D.overall || {}, lk = D.lockdown || {};
+        let limit = t('No limit');
+        if (!ov.unlimited) {
+            const extra = ov.exception_set_to !== null && ov.exception_set_to !== undefined ? t('exception')
+                : ov.exception_added ? (ov.exception_added > 0 ? '+' : '-') + dur(Math.abs(ov.exception_added)) : '';
+            limit = dur(ov.limit) + (extra ? ` <small>(${esc(extra)})</small>` : '');
+        }
+        const lock = !lk.enabled ? t('Off') : lk.active ? (lk.ends_at ? t('Active until {t}', { t: hhmm(lk.ends_at) }) : t('Active'))
+            : lk.starts_at ? `${hhmm(lk.starts_at)}${lk.ends_at ? ' → ' + hhmm(lk.ends_at) : ''}` : t('Off');
+        const rows = [
+            [t('Used today'), `<span id="f-used">${dur(ov.used)}</span>`, ''],
+            [t("Today's limit"), limit, ''],
+            [t('Night lockdown'), esc(lock), lk.active ? 'danger' : ''],
+            [t('Last seen'), seenHtml(), D.online && state === 'ok' ? 'on' : 'warn'],
+        ];
+        if (D.pending_changes) rows.push([t('Pending changes'), String(D.pending_changes), 'warn']);
+        return `<dl class="apps facts">${rows.map(([k, v, c]) => `<dt>${esc(k)}</dt><dd class="${c}">${v}</dd>`).join('')}</dl>`;
     }
 
     // Updates the numbers every second without re-rendering the layout
@@ -347,7 +404,10 @@ a { color: inherit; text-decoration: none; }
         }
         const st = document.getElementById('st');
         st.className = 'st ' + (state === 'ok' ? (D.online ? 'on' : 'off') : 'err');
-        st.lastElementChild.textContent = state === 'ok' ? (D.online ? t('Online') : t('Offline')) : t('Unreachable');
+        st.querySelector('.sl').textContent = state === 'ok' ? (D.online ? t('Online') : t('Offline')) : t('Unreachable');
+        // When the kid's PC is off (or the server is unreachable) say since when, if there is room
+        const seenMs = state === 'ok' ? (D.online ? 0 : Date.parse(D.last_seen || '')) : fetchedAt;
+        st.querySelector('.ago').textContent = seenMs ? ' · ' + ago(seenMs) : '';
 
         const big = document.getElementById('big'), lbl = document.getElementById('lbl'), sub = document.getElementById('sub');
         const ring = document.getElementById('ring');
@@ -368,10 +428,16 @@ a { color: inherit; text-decoration: none; }
             sub.textContent = (ov.unlimited ? t('Used {a}', { a: dur(used) }) : t('Used {a} of {b}', { a: dur(used), b: dur(ov.limit) }))
                 + (D.lockdown && D.lockdown.starts_at && D.pc_reason !== 'lockdown' ? ' · ' + t('lockdown {t}', { t: hhmm(D.lockdown.starts_at) }) : '');
         }
+        const fr = document.getElementById('f-rel');
+        if (fr) { const ms = state === 'ok' ? Date.parse(D.last_seen || '') : fetchedAt; if (ms) fr.textContent = ' · ' + ago(ms); }
+        const fu = document.getElementById('f-used');
+        if (fu) fu.textContent = dur((ov.used || 0) + (live && ov.running ? elapsed : 0));
         big.className = 'big num ' + (lv === 'ok' ? '' : lv);
         ring.className = 'ring ' + lv;
         document.getElementById('rb').setAttribute('stroke-dashoffset', String(100.53 * (1 - frac)));
         document.getElementById('pct').textContent = pc === null || pc === undefined ? '∞' : Math.round(frac * 100) + '%';
+        // The bar repeats the ring, so it is only shown when a night lockdown is set
+        w.classList.toggle('no-lock', !(D.lockdown && D.lockdown.enabled));
         const mm = document.getElementById('mm');
         mm.className = 'meter main-meter ' + (lv === 'ok' ? '' : lv);
         mm.firstElementChild.style.width = ((1 - frac) * 100) + '%';
