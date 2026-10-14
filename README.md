@@ -40,6 +40,8 @@ ParentalControlsV2/
 │   ├── secondary_api.py     # Buffering proxy API (PORT 5035)
 │   ├── auth.py               # Password sign-in, sessions, security headers
 │   ├── login.html            # Sign-in page
+│   ├── widget.html           # Embeddable widget for homelab dashboards (/widget)
+│   ├── widget.py             # Read-only summary behind /api/widget/data
 │   ├── .env.example          # Copy to .env and set DASHBOARD_PASSWORD + PRIMARY_API_TOKEN
 │   ├── dashboard.html        # Web dashboard UI
 │   ├── requirements.txt       # Python dependencies
@@ -172,6 +174,83 @@ the configuration. If the two values don't match, the secondary API logs
 - **Light / dark switch** in the header (or press `T`). The choice is saved in a cookie (`pcv2_theme`, kept for a year) and applied before the page draws, so there is no flash. Settings → Theme can also set it back to "Match system".
 - **English / Turkish switch** in the header (and on the sign-in page): one click for Turkish, one more for English (or press `L`). The choice is saved in the `pcv2_lang` cookie for a year; the first visit follows the browser's language. Durations, dates and the sign-in error messages switch too.
 - One batched request per refresh (`GET /api/dashboard/data`, which now also returns today's usage and the pending queue), request timeouts, and polling that pauses while the tab is hidden.
+
+## 🧩 Homelab Dashboard Widget (Homepage)
+
+`http://YOUR_SERVER:5035/widget` is a small page made to live inside an iframe, e.g. a
+[Homepage](https://gethomepage.dev) `iframe` widget. It fills whatever size it is given —
+a one-line strip, a small tile, or a wide two-column card with per-app bars — and refreshes
+its own numbers (no flashing reloads). Time left counts down live and accounts for
+exceptions and the next night lockdown, exactly like the dashboard.
+
+**Add exception** (and the `+` next to each app) opens the dashboard with the exception
+dialog already filled in. The widget itself never changes anything, so another site framing
+it can't trick anyone into granting time.
+
+```yaml
+# services.yaml
+- Family:
+    - Parental Controls:
+        icon: mdi-shield-account
+        href: https://pcv2.example.com/
+        widget:
+          type: iframe
+          name: pcv2
+          src: https://pcv2.example.com/widget?theme=dark
+          classes: h-56            # any height works — the layout adapts
+          allowScrolling: no
+```
+
+**Signing in inside the frame.** If Homepage and PCV2 are on the same site (e.g.
+`home.example.com` + `pcv2.example.com`, or the same IP on different ports), the widget uses
+your normal dashboard sign-in. Otherwise set `WIDGET_TOKEN` in `serverside/.env` and add it to
+the URL: `/widget?theme=dark&key=<WIDGET_TOKEN>`. That token is read-only — it only unlocks the
+widget's data, never the dashboard or any change. (If Authelia sits in front, allow `/widget`
+and `/api/widget/data` through it or share its session cookie as usual.)
+
+**Options** (URL parameters, all optional):
+
+| Option | Values | |
+|---|---|---|
+| `theme` | `auto` · `dark` · `light` | colours (use `dark` for Homepage's dark themes) |
+| `bg` | `transparent` · `card` | blend into the host card (default) or draw its own |
+| `scheme` | `dark` · `light` | only if the frame shows a solid black/white box |
+| `accent` | hex, e.g. `f59e0b` | accent colour |
+| `view` | `auto` · `mini` · `compact` · `full` | force a layout instead of choosing by size |
+| `apps` | `chrome.exe,discord.exe` · `none` | which app rows to show |
+| `max` | number | max app rows (default 8) |
+| `hide` | `header,ring,bar,button,apps,footer` | hide parts |
+| `title` | text | header text |
+| `lang` | `en` · `tr` | language (default: your dashboard choice) |
+| `refresh` | seconds (≥10) | update interval (default 30) |
+| `open` | `tab` · `top` | open the dashboard in a new tab (default) or the whole window |
+| `scale` | `0.7`–`1.6` | text size |
+
+Only `/widget` may be framed; restrict who can frame it with `WIDGET_FRAME_ANCESTORS`.
+
+**Native Homepage widget instead of an iframe:** `GET /api/widget/data` returns ready-made text
+fields, so Homepage's `customapi` widget can show them directly:
+
+```yaml
+        widget:
+          type: customapi
+          url: https://pcv2.example.com/api/widget/data
+          refreshInterval: 30000
+          headers:
+            X-Widget-Key: your-widget-token
+          mappings:
+            - field: { data: remaining_text }
+              label: Time left
+            - field: { data: used_text }
+              label: Used today
+            - field: { data: lockdown_text }
+              label: Lockdown
+            - field: { data: online_text }
+              label: PC
+```
+
+The dashboard also accepts deep links: `/?action=exception&app=chrome.exe&secs=900` opens the
+exception dialog prefilled (it still has to be confirmed).
 
 ## 📚 API Documentation
 

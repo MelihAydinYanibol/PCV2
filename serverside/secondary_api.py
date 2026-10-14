@@ -525,11 +525,14 @@ def upload_config():
 # BATCH ENDPOINT
 @app.route("/api/dashboard/data", methods=["GET"])
 def get_dashboard_data():
-    """Batch endpoint: returns all dashboard data in a single request.
+    """Batch endpoint: returns all dashboard data in a single request."""
+    return jsonify({"status": "success", "data": collect_dashboard_data()}), 200
 
-    Fetches limits, status, today's exceptions and full config in parallel
-    from the primary API (or from the local cache when offline) so the
-    browser only needs one round-trip to populate the entire dashboard.
+
+def collect_dashboard_data():
+    """Fetch limits, status, today's exceptions/usage, config and night
+    lockdown in parallel from the primary API (or from the local cache when
+    offline), plus the pending queue. Shared by the dashboard and the widget.
     """
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -602,8 +605,21 @@ def get_dashboard_data():
         'last_synced': min(cache_times) if cache_times else None,
     }
     results['queue'] = queue_items
+    return results
 
-    return jsonify({"status": "success", "data": results}), 200
+
+# WIDGET (embeddable page for homelab dashboards, e.g. Homepage's iframe widget)
+@app.route("/api/widget/data", methods=["GET"])
+def get_widget_data():
+    """Read-only summary of today: time left, per-app usage, lockdown, queue."""
+    from widget import summarize
+    return jsonify({"status": "success", "data": summarize(collect_dashboard_data())}), 200
+
+
+@app.route("/widget", methods=["GET"])
+def serve_widget():
+    """Embeddable widget page (fills any iframe size; options via URL)."""
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'widget.html')
 
 # ============================================================================
 # SERVER-SPECIFIC ENDPOINTS
@@ -828,6 +844,7 @@ if __name__ == "__main__":
     
     print("\nServer Endpoints:")
     print("  Dashboard: GET /  (sign in at /login)")
+    print("  Widget:    GET /widget  (data: GET /api/widget/data)")
     print("  Proxy: All endpoints from primary API at /api/*")
     print("  Batch: GET /api/dashboard/data")
     print("  Server Status: GET /api/server/status")

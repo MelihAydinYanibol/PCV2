@@ -87,6 +87,32 @@ primary API rejects anything else with `401`.
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" http://YOUR_SERVER:5035/api/server/status
 ```
 
+## Widget
+
+- `GET /widget` — embeddable page for homelab dashboards (see README → Homelab Dashboard Widget).
+  The only page that may be framed by other sites (`WIDGET_FRAME_ANCESTORS`).
+- `GET /api/widget/data` — read-only summary of today. Needs a sign-in, or the read-only
+  `WIDGET_TOKEN` as `X-Widget-Key: <token>` (or `?key=<token>`).
+
+```json
+{
+  "status": "success",
+  "data": {
+    "online": true,
+    "pc_remaining": 4700, "pc_reason": "limit",
+    "overall": { "limit": 9000, "used": 4300, "remaining": 4700, "running": true, "exception_added": 1800 },
+    "lockdown": { "enabled": true, "active": false, "starts_at": "2026-10-14T22:00:00", "starts_in": 15261 },
+    "apps": [{ "name": "chrome.exe", "limit": 3600, "used": 2950, "remaining": 650, "effective_remaining": 650 }],
+    "pending_changes": 0,
+    "status_text": "1h 18m left", "remaining_text": "1h 18m", "used_text": "1h 11m",
+    "limit_text": "2h 30m", "lockdown_text": "22:00", "online_text": "Online"
+  }
+}
+```
+
+`pc_reason` is `limit`, `lockdown` (lockdown starts before the limit runs out),
+`lockdown-active` or `null` (no limit). Times use this server's clock.
+
 ## Endpoints
 
 ### Standard API Endpoints (Proxy)
