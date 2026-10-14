@@ -17,6 +17,9 @@ Password authentication for the secondary API and web dashboard.
   delay; every state-changing request must come from this same origin.
 * Scripts / tools can use ``Authorization: Bearer <DASHBOARD_API_TOKEN>`` when
   that variable is set.
+* The embeddable ``/widget`` page is the only page that may be shown inside
+  another site's iframe (``WIDGET_FRAME_ANCESTORS``). It contains no data
+  itself; its data endpoint needs a sign-in or the read-only ``WIDGET_TOKEN``.
 """
 
 import hashlib
@@ -27,7 +30,7 @@ import sqlite3
 import sys
 import threading
 import time
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from flask import Response, jsonify, redirect, request, send_from_directory
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -43,7 +46,9 @@ MAX_LOCKOUT = 15 * 60
 FAILURE_MEMORY = 60 * 60  # forget failures after an hour without new ones
 
 # Paths reachable without signing in
-PUBLIC_PATHS = {"/login", "/favicon.ico"}
+PUBLIC_PATHS = {"/login", "/favicon.ico", "/widget"}
+# Read-only endpoints the widget token may call
+WIDGET_PATHS = {"/api/widget/data"}
 
 
 def _env_bool(name, default=False):
@@ -66,6 +71,15 @@ class Auth:
         self.password_hash = os.getenv("DASHBOARD_PASSWORD_HASH") or None
         api_token = os.getenv("DASHBOARD_API_TOKEN") or None
         self.api_token_digest = _sha256(api_token) if api_token else None
+        widget_token = os.getenv("WIDGET_TOKEN") or None
+        self.widget_token_digest = _sha256(widget_token) if widget_token else None
+        if widget_token and len(widget_token) < 16:
+            print("[AUTH] WARNING: WIDGET_TOKEN is short. Use a long random value.")
+        # Who may show /widget in an iframe, e.g. "https://home.example.com http://192.168.1.10:3000"
+        self.widget_ancestors = " ".join(
+            a for a in (os.getenv("WIDGET_FRAME_ANCESTORS") or "*").replace(",", " ").split()
+            if a == "*" or a == "'self'" or a.startswith(("http://", "https://"))
+        ) or "'self'"
         self.session_seconds = int(float(os.getenv("SESSION_DAYS", "30")) * 86400)
         self.trust_proxy = _env_bool("TRUST_PROXY")
         self.force_secure_cookie = _env_bool("COOKIE_SECURE")
@@ -183,6 +197,13 @@ class Auth:
             return False
         return hmac.compare_digest(_sha256(header[7:].strip()), self.api_token_digest)
 
+    def _check_widget_key(self):
+        """Read-only widget token, sent as X-Widget-Key header or ?key= (for iframe URLs)."""
+        if not self.widget_token_digest:
+            return False
+        key = request.headers.get("X-Widget-Key") or request.args.get("key") or ""
+        return bool(key) and hmac.compare_digest(_sha256(key), self.widget_token_digest)
+
     def _same_origin(self):
         """Reject cross-site writes (CSRF). Browsers always send Origin on POST/PUT/DELETE."""
         origin = request.headers.get("Origin") or request.headers.get("Referer")
@@ -255,14 +276,19 @@ class Auth:
             return None
         if self.authenticated():
             return None
+        if path in WIDGET_PATHS and request.method == "GET" and self._check_widget_key():
+            return None
         if path.startswith("/api/"):
             return jsonify({"status": "error", "message": "Sign-in required", "auth": "required"}), 401
-        target = path if request.method == "GET" else "/"
-        return redirect(f"/login?next={target}", code=303)
+        # Keep the query string (e.g. /?action=exception&app=...) across the sign-in
+        target = request.full_path.rstrip("?") if request.method == "GET" else "/"
+        return redirect("/login?next=" + quote(target, safe="/"), code=303)
 
     def _security_headers(self, response):
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        framable = request.path == "/widget"
+        if not framable:
+            response.headers["X-Frame-Options"] = "DENY"
         # same-origin (not no-referrer): no-referrer makes browsers send "Origin: null" on form posts
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
@@ -270,10 +296,11 @@ class Auth:
         if response.mimetype == "text/html":
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; "
+                "img-src 'self' data:; connect-src 'self'; form-action 'self'; "
+                f"frame-ancestors {self.widget_ancestors if framable else chr(39) + 'none' + chr(39)}; "
                 "base-uri 'none'; object-src 'none'"
             )
-        if request.path.startswith("/api/") or request.path in ("/login", "/logout", "/", "/dashboard"):
+        if request.path.startswith("/api/") or request.path in ("/login", "/logout", "/", "/dashboard", "/widget"):
             response.headers["Cache-Control"] = "no-store"
         if self._is_https():
             response.headers["Strict-Transport-Security"] = "max-age=31536000"

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>PCV2 widget</title>
+<!--
+  Embeddable PCV2 widget for homelab dashboards (e.g. Homepage's iframe widget).
+  It fills whatever size the iframe gives it and adapts its layout.
+
+  URL options (all optional):
+    key=…            read-only WIDGET_TOKEN from serverside/.env (only needed when the
+                     iframe can't use your dashboard sign-in cookie)
+    theme=auto|dark|light      colours (default auto; use dark for Homepage's dark themes)
+    bg=transparent|card        transparent blends into the host card (default), card draws its own
+    scheme=light|dark          declare a color-scheme; only needed if the frame shows a solid
+                               black/white box (the host page declares one and browsers then
+                               paint an opaque backdrop when the two differ)
+    accent=4f5bd5              accent colour (hex, no #)
+    view=auto|mini|compact|full  force a layout instead of choosing by size
+    apps=chrome.exe,discord.exe  only these apps (apps=none hides the list)
+    max=6                      max app rows
+    hide=header,ring,bar,button,apps,footer   parts to hide
+    title=Kids PC              header text
+    lang=en|tr                 language (default: dashboard choice / browser)
+    refresh=30                 seconds between updates (min 10)
+    open=tab|top               where "Add exception" opens the dashboard: new tab (default) or
+                               the whole host window (the dashboard itself can't be framed)
+    dashboard=https://…        dashboard address if it is not this server
+    scale=1                    text size multiplier (0.7 – 1.6)
+-->
+<style>
+:root {
+    --text: #1b1f29; --text-2: #5b6272; --text-3: #8a91a1;
+    --surface: #ffffff; --surface-2: rgba(20, 24, 40, .05); --border: rgba(20, 24, 40, .12);
+    --track: rgba(20, 24, 40, .10);
+    --accent: #4f5bd5; --accent-text: #ffffff; --accent-soft: rgba(79, 91, 213, .14);
+    --ok: #1f9d63; --warn: #c27c0e; --danger: #d64545;
+    --scale: 1;
+}
+:root.dark {
+    --text: #e8eaf0; --text-2: #b4bac8; --text-3: #8a91a1;
+    --surface: #171a22; --surface-2: rgba(255, 255, 255, .06); --border: rgba(255, 255, 255, .12);
+    --track: rgba(255, 255, 255, .12);
+    --accent: #8b94f3; --accent-text: #0f1117; --accent-soft: rgba(139, 148, 243, .18);
+    --ok: #3ccf8e; --warn: #f0b04a; --danger: #f07070;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: transparent; overflow: hidden; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    font-size: calc(13px * var(--scale));
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* The widget is a size container: every layout decision below follows the iframe's size */
+.w {
+    container-type: size; container-name: w;
+    width: 100vw; height: 100vh;
+}
+.in {
+    height: 100%; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    overflow: hidden;
+}
+.card .in { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+
+.hd { display: flex; align-items: center; gap: 8px; min-height: 18px; flex: 0 0 auto; }
+.ttl { font-weight: 650; font-size: .92em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: .78em; font-weight: 600; color: var(--text-3); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: 0 0 auto; }
+.st.on { color: var(--ok); } .st.on .dot { background: var(--ok); animation: pulse 2s infinite; }
+.st.off { color: var(--warn); } .st.off .dot { background: var(--warn); }
+.st.err { color: var(--danger); } .st.err .dot { background: var(--danger); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: none; } }
+
+.main { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 0 0 auto; }
+.hero { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ring { width: 54px; height: 54px; flex: 0 0 auto; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .trk { stroke: var(--track); }
+.ring .bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .6s ease, stroke .3s; }
+.ring.warn .bar { stroke: var(--warn); } .ring.danger .bar { stroke: var(--danger); } .ring.ok .bar { stroke: var(--ok); }
+.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: .78em; font-weight: 700; color: var(--text-2); }
+.hx { min-width: 0; flex: 1; }
+.lbl { font-size: .8em; color: var(--text-3); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.big { font-weight: 750; letter-spacing: -.02em; line-height: 1.05; white-space: nowrap; font-size: calc(clamp(20px, min(11cqw, 22cqh), 46px) * var(--scale)); }
+.big.warn { color: var(--warn); } .big.danger { color: var(--danger); }
+.sub { font-size: .8em; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+.meter { height: 6px; border-radius: 4px; background: var(--track); overflow: hidden; flex: 0 0 auto; }
+.meter > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .6s ease; }
+.meter.warn > i { background: var(--warn); } .meter.danger > i { background: var(--danger); }
+
+.acts { display: flex; gap: 6px; flex: 0 0 auto; }
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 6px 10px; border-radius: 8px; font-weight: 650; font-size: .85em; white-space: nowrap;
+    background: var(--accent); color: var(--accent-text); border: 0; cursor: pointer;
+    transition: filter .15s;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: var(--surface-2); color: var(--text-2); }
+.btn svg { width: 14px; height: 14px; }
+.btn.grow { flex: 1; }
+
+.apps { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; flex: 1 1 auto; scrollbar-width: thin; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 8px; }
+.an { font-weight: 600; font-size: .88em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
+.an .live { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: 0 0 auto; }
+.ar { font-size: .85em; font-weight: 650; white-space: nowrap; }
+.ar.warn { color: var(--warn); } .ar.danger { color: var(--danger); } .ar.muted { color: var(--text-3); font-weight: 550; }
+.plus { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 1em; line-height: 1; }
+.plus:hover { filter: brightness(1.1); }
+.app .meter { grid-column: 1 / -1; height: 4px; }
+.empty { color: var(--text-3); font-size: .85em; }
+
+.ft { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--text-3); font-size: .75em; flex: 0 0 auto; margin-top: auto; }
+.chip { padding: 1px 7px; border-radius: 999px; background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+.chip.warn { color: var(--warn); } .chip.danger { color: var(--danger); } .chip.info { color: var(--accent); }
+
+.msg { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; padding: 10px; color: var(--text-2); font-size: .9em; }
+.msg b { color: var(--text); }
+.skel { background: var(--track); border-radius: 6px; animation: sh 1.2s infinite alternate; }
+@keyframes sh { from { opacity: .45; } to { opacity: 1; } }
+
+/* ---------------- size-driven layouts ---------------- */
+/* Wide and tall enough: hero on the left, app list on the right */
+@container w (min-width: 520px) and (min-height: 170px) {
+    .in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 18px; }
+    .hd { grid-column: 1 / -1; }
+    .main { grid-column: 1; grid-row: 2; justify-content: center; }
+    .apps { grid-column: 2; grid-row: 2; }
+    .ft { grid-column: 1 / -1; }
+    .ring { width: 72px; height: 72px; }
+}
+/* Short: drop the footer */
+@container w (max-height: 260px) { .ft { display: none; } }
+/* Shorter: drop the app list */
+@container w (max-height: 190px) and (max-width: 519px) { .apps { display: none; } }
+@container w (max-height: 150px) { .apps { display: none; } .ring { width: 44px; height: 44px; } }
+/* Strip: one row — time + button */
+@container w (max-height: 110px) {
+    .in { flex-direction: row; align-items: center; padding: 6px 10px; gap: 10px; }
+    .hd { display: none; }
+    .main { flex: 1; min-width: 0; flex-direction: row; align-items: center; gap: 10px; }
+    .hero { flex: 1; }
+    .meter.main-meter { display: none; }
+    .ring { width: 38px; height: 38px; }
+    .ring .pct { display: none; }
+    .acts .ghost { display: none; }
+}
+/* Tiny: just the time */
+@container w (max-height: 64px) or (max-width: 170px) {
+    .ring, .sub, .acts .ghost, .lbl { display: none; }
+    .acts .btn.grow { flex: 0 0 auto; padding: 6px 8px; }
+    .acts .btn .txt { display: none; }
+}
+@container w (max-width: 260px) { .acts .ghost { display: none; } .ring { width: 42px; height: 42px; } }
+
+/* Forced layouts (?view=…) */
+.v-mini .ring, .v-mini .sub, .v-mini .apps, .v-mini .ft, .v-mini .hd, .v-mini .main-meter, .v-mini .ghost { display: none !important; }
+.v-mini .in { flex-direction: row; align-items: center; }
+.v-mini .main { flex: 1; flex-direction: row; align-items: center; gap: 10px; }
+.v-mini .hero { flex: 1; }
+.v-compact .apps, .v-compact .ft { display: none !important; }
+
+/* ?hide=… */
+.h-header .hd, .h-ring .ring, .h-bar .meter, .h-button .acts, .h-apps .apps, .h-footer .ft { display: none !important; }
+</style>
+</head>
+<body>
+<div class="w" id="w">
+    <div class="in" id="in">
+        <div class="msg"><div class="skel" style="width:60%;height:28px"></div><div class="skel" style="width:40%;height:12px"></div></div>
+    </div>
+</div>
+<script>
+'use strict';
+(function () {
+    /* ---------------- options ---------------- */
+    const q = new URLSearchParams(location.search);
+    const opt = {
+        key: q.get('key') || '',
+        theme: (q.get('theme') || 'auto').toLowerCase(),
+        bg: (q.get('bg') || 'transparent').toLowerCase(),
+        accent: /^[0-9a-f]{3}([0-9a-f]{3})?$/i.test(q.get('accent') || '') ? '#' + q.get('accent') : null,
+        view: (q.get('view') || 'auto').toLowerCase(),
+        apps: q.get('apps') ? q.get('apps').split(',').map(s => s.trim()).filter(Boolean) : null,
+        max: Math.max(1, Math.min(50, parseInt(q.get('max'), 10) || 8)),
+        hide: (q.get('hide') || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean),
+        title: (q.get('title') || '').slice(0, 60),
+        refresh: Math.max(10, Math.min(3600, parseInt(q.get('refresh'), 10) || 30)),
+        open: (q.get('open') || 'tab').toLowerCase(),
+        scale: Math.max(0.7, Math.min(1.6, parseFloat(q.get('scale')) || 1)),
+    };
+    // Only allow plain http(s) dashboard addresses (never javascript: or data: URLs)
+    let dash = location.origin;
+    try {
+        const d = q.get('dashboard');
+        if (d) { const u = new URL(d, location.href); if (u.protocol === 'http:' || u.protocol === 'https:') dash = u.origin + u.pathname.replace(/\/+$/, ''); }
+    } catch (e) { /* keep default */ }
+    const target = opt.open === 'top' ? '_top' : '_blank';
+
+    const cookieLang = (document.cookie.match(/(?:^|;\s*)pcv2_lang=(tr|en)/) || [])[1];
+    const LANG = ['tr', 'en'].includes(q.get('lang')) ? q.get('lang') : (cookieLang || ((navigator.language || '').toLowerCase().startsWith('tr') ? 'tr' : 'en'));
+
+    const root = document.documentElement;
+    const dark = opt.theme === 'dark' || (opt.theme === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.toggle('dark', dark);
+    root.lang = LANG;
+    // No color-scheme by default so the frame stays transparent over hosts that don't declare one
+    if (['light', 'dark'].includes((q.get('scheme') || '').toLowerCase())) root.style.colorScheme = q.get('scheme').toLowerCase();
+    else if (opt.bg === 'card') root.style.colorScheme = dark ? 'dark' : 'light';
+    if (opt.accent) root.style.setProperty('--accent', opt.accent);
+    root.style.setProperty('--scale', opt.scale);
+    const w = document.getElementById('w');
+    if (opt.bg === 'card') w.classList.add('card');
+    if (opt.view === 'mini' || opt.view === 'compact') w.classList.add('v-' + opt.view);
+    if (opt.view === 'full') w.style.containerType = 'normal';
+    opt.hide.forEach(h => w.classList.add('h-' + h));
+
+    /* ---------------- text ---------------- */
+    const TR = {
+        'Parental Controls': 'Ebeveyn Denetimi', 'Online': 'Çevrimiçi', 'Offline': 'Çevrimdışı', 'Unreachable': 'Ulaşılamıyor',
+        'Time left today': 'Bugün kalan süre', 'Until night lockdown': 'Gece kilidine kalan', 'Night lockdown': 'Gece kilidi',
+        'No limit today': 'Bugün sınır yok', 'Locked': 'Kilitli', 'Time is up': 'Süre doldu', 'Unlimited': 'Sınırsız',
+        'Used {a} of {b}': '{b} süreden {a}', 'Used {a}': '{a} kullanıldı', 'until {t}': '{t} saatine kadar',
+        'lockdown {t}': 'kilit {t}', 'Add exception': 'İstisna ekle', 'Open': 'Aç', 'No limits set': 'Sınır ayarlanmamış',
+        'No limit': 'Sınır yok', 'Time up': 'Doldu', '{n} pending': '{n} bekliyor', 'seen {t}': 'son görülme {t}',
+        'updated {t}': 'güncellendi {t}', 'Sign in to PCV2': 'PCV2’ye giriş yapın', 'Sign in': 'Giriş yap',
+        'This widget needs your dashboard sign-in, or a key= from WIDGET_TOKEN.': 'Bu widget panel girişinize veya WIDGET_TOKEN’dan bir key= değerine ihtiyaç duyar.',
+        'Cannot reach PCV2': 'PCV2’ye ulaşılamıyor', 'Retrying…': 'Tekrar deneniyor…',
+        'Add exception for {app}': '{app} için istisna ekle', 'Whole computer': 'Tüm bilgisayar', 'Lockdown active': 'Kilit etkin',
+        'h': 'sa', 'm': 'dk', 's': 'sn', 'just now': 'az önce', '{n}m ago': '{n} dk önce', '{n}h ago': '{n} sa önce', '{n}d ago': '{n} gün önce',
+    };
+    const t = (k, v) => {
+        let s = LANG === 'tr' && TR[k] !== undefined ? TR[k] : k;
+        if (v) s = s.replace(/\{(\w+)\}/g, (m, x) => (v[x] !== undefined ? v[x] : m));
+        return s;
+    };
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dur = (sec, withSec) => {
+        sec = Math.max(0, Math.round(sec || 0));
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        if (h) return `${h}${t('h')} ${String(m).padStart(2, '0')}${t('m')}`;
+        if (m) return withSec && m < 10 ? `${m}${t('m')} ${String(s).padStart(2, '0')}${t('s')}` : `${m}${t('m')}`;
+        return `${s}${t('s')}`;
+    };
+    const clock = sec => {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60, p = n => String(n).padStart(2, '0');
+        return h ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+    };
+    const hhmm = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString(LANG === 'tr' ? 'tr-TR' : [], { hour: '2-digit', minute: '2-digit' }); };
+    const ago = ms => {
+        const s = Math.max(0, (Date.now() - ms) / 1000);
+        if (s < 60) return t('just now');
+        if (s < 3600) return t('{n}m ago', { n: Math.floor(s / 60) });
+        if (s < 86400) return t('{n}h ago', { n: Math.floor(s / 3600) });
+        return t('{n}d ago', { n: Math.floor(s / 86400) });
+    };
+    const level = (rem, lim) => (rem <= 300 || (lim > 0 && rem / lim < 0.1)) ? 'danger' : (rem <= 900 || (lim > 0 && rem / lim < 0.25)) ? 'warn' : '';
+    const link = (app, secs) => `${dash}/?action=exception${app ? '&app=' + encodeURIComponent(app) : ''}${secs ? '&secs=' + secs : ''}`;
+
+    /* ---------------- data ---------------- */
+    const BUF = 'pcv2.widget.v1';
+    let D = null, fetchedAt = 0, state = 'loading';
+    try { const b = JSON.parse(localStorage.getItem(BUF) || 'null'); if (b && b.data) { D = b.data; fetchedAt = b.at; state = 'buffered'; } } catch (e) { /* storage blocked */ }
+
+    async function load() {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10000);
+        try {
+            const res = await fetch('/api/widget/data', {
+                headers: opt.key ? { 'X-Widget-Key': opt.key } : {},
+                cache: 'no-store', credentials: 'same-origin', signal: ctrl.signal,
+            });
+            if (res.status === 401) { state = 'auth'; render(); return; }
+            const j = await res.json();
+            if (!res.ok || j.status !== 'success') throw new Error('bad response');
+            D = j.data; fetchedAt = Date.now(); state = 'ok';
+            try { localStorage.setItem(BUF, JSON.stringify({ at: fetchedAt, data: D })); } catch (e) { /* ignore */ }
+        } catch (e) {
+            state = D ? 'stale' : 'error';
+        } finally { clearTimeout(timer); }
+        render();
+    }
+
+    /* ---------------- render ---------------- */
+    const $in = document.getElementById('in');
+    const ICON_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const ICON_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+
+    function render() {
+        if (state === 'auth') {
+            $in.innerHTML = `<div class="msg"><b>${t('Sign in to PCV2')}</b><span>${t('This widget needs your dashboard sign-in, or a key= from WIDGET_TOKEN.')}</span>
+                <a class="btn" href="${esc(dash)}/login" target="${target}" rel="noopener">${t('Sign in')}</a></div>`;
+            return;
+        }
+        if (!D) {
+            if (state === 'error') $in.innerHTML = `<div class="msg"><b>${t('Cannot reach PCV2')}</b><span>${t('Retrying…')}</span></div>`;
+            return;
+        }
+        const apps = (D.apps || []).filter(a => !opt.apps || opt.apps.includes(a.name)).slice(0, opt.max);
+        const showApps = !(opt.apps && opt.apps.length === 1 && opt.apps[0] === 'none');
+        $in.innerHTML = `
+            <div class="hd"><span class="ttl">${esc(opt.title || t('Parental Controls'))}</span><span class="st" id="st"><span class="dot"></span><span></span></span></div>
+            <div class="main">
+                <div class="hero">
+                    <div class="ring" id="ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16" fill="none" stroke-width="5"/><circle class="bar" id="rb" cx="20" cy="20" r="16" fill="none" stroke-width="5" stroke-dasharray="100.53" stroke-dashoffset="100.53"/></svg><span class="pct" id="pct"></span></div>
+                    <div class="hx"><div class="lbl" id="lbl"></div><div class="big num" id="big"></div><div class="sub" id="sub"></div></div>
+                </div>
+                <div class="meter main-meter" id="mm"><i></i></div>
+                <div class="acts">
+                    <a class="btn grow" href="${esc(link(null))}" target="${target}" rel="noopener" title="${esc(t('Add exception'))}">${ICON_PLUS}<span class="txt">${t('Add exception')}</span></a>
+                    <a class="btn ghost" href="${esc(dash)}/" target="${target}" rel="noopener">${ICON_OPEN}<span class="txt">${t('Open')}</span></a>
+                </div>
+            </div>
+            ${showApps ? `<ul class="apps">${apps.length ? apps.map(a => `
+                <li class="app" data-app="${esc(a.name)}">
+                    <span class="an">${a.running ? '<span class="live"></span>' : ''}<span>${esc(a.name)}</span></span>
+                    <span class="ar num"></span>
+                    <a class="plus" href="${esc(link(a.name))}" target="${target}" rel="noopener" title="${esc(t('Add exception for {app}', { app: a.name }))}">+</a>
+                    <div class="meter"><i></i></div>
+                </li>`).join('') : `<li class="empty">${t('No limits set')}</li>`}</ul>` : ''}
+            <div class="ft" id="ft"></div>`;
+        tick();
+    }
+
+    // Updates the numbers every second without re-rendering the layout
+    function tick() {
+        if (!D || state === 'auth' || !document.getElementById('big')) return;
+        const elapsed = (Date.now() - fetchedAt) / 1000;
+        const live = D.online && (state === 'ok');
+        const ov = D.overall || {};
+        let pc = D.pc_remaining;
+        if (pc !== null && pc !== undefined) {
+            if (D.pc_reason === 'lockdown') pc -= elapsed;                // wall clock
+            else if (D.pc_reason === 'limit' && live && ov.running) pc -= elapsed;
+            pc = Math.max(0, pc);
+        }
+        const st = document.getElementById('st');
+        st.className = 'st ' + (state === 'ok' ? (D.online ? 'on' : 'off') : 'err');
+        st.lastElementChild.textContent = state === 'ok' ? (D.online ? t('Online') : t('Offline')) : t('Unreachable');
+
+        const big = document.getElementById('big'), lbl = document.getElementById('lbl'), sub = document.getElementById('sub');
+        const ring = document.getElementById('ring');
+        let frac = 1, lv = '';
+        if (D.pc_reason === 'lockdown-active') {
+            lbl.textContent = t('Night lockdown'); big.textContent = t('Locked'); frac = 0; lv = 'danger';
+            sub.textContent = D.lockdown && D.lockdown.ends_at ? t('until {t}', { t: hhmm(D.lockdown.ends_at) }) : '';
+        } else if (pc === null || pc === undefined) {
+            lbl.textContent = t('Time left today'); big.textContent = t('Unlimited');
+            sub.textContent = t('Used {a}', { a: dur(ov.used) }); lv = 'ok';
+        } else {
+            lbl.textContent = D.pc_reason === 'lockdown' ? t('Until night lockdown') : t('Time left today');
+            big.textContent = pc <= 0 ? t('Time is up') : clock(pc);
+            const limit = ov.unlimited ? 0 : ov.limit;
+            frac = limit > 0 ? Math.max(0, Math.min(1, pc / limit)) : (pc > 0 ? 1 : 0);
+            lv = level(pc, limit);
+            const used = (ov.used || 0) + (live && ov.running ? elapsed : 0);
+            sub.textContent = (ov.unlimited ? t('Used {a}', { a: dur(used) }) : t('Used {a} of {b}', { a: dur(used), b: dur(ov.limit) }))
+                + (D.lockdown && D.lockdown.starts_at && D.pc_reason !== 'lockdown' ? ' · ' + t('lockdown {t}', { t: hhmm(D.lockdown.starts_at) }) : '');
+        }
+        big.className = 'big num ' + (lv === 'ok' ? '' : lv);
+        ring.className = 'ring ' + lv;
+        document.getElementById('rb').setAttribute('stroke-dashoffset', String(100.53 * (1 - frac)));
+        document.getElementById('pct').textContent = pc === null || pc === undefined ? '∞' : Math.round(frac * 100) + '%';
+        const mm = document.getElementById('mm');
+        mm.className = 'meter main-meter ' + (lv === 'ok' ? '' : lv);
+        mm.firstElementChild.style.width = ((1 - frac) * 100) + '%';
+
+        for (const a of D.apps || []) {
+            const row = document.querySelector(`.app[data-app="${CSS.escape(a.name)}"]`);
+            if (!row) continue;
+            const run = live && a.running ? elapsed : 0;
+            let rem = a.effective_remaining;
+            if (rem !== null && rem !== undefined) {
+                if (D.pc_reason === 'lockdown' && a.effective_remaining === D.pc_remaining) rem -= elapsed;
+                else rem -= run;
+                rem = Math.max(0, rem);
+            }
+            const ar = row.querySelector('.ar');
+            const lim = a.unlimited ? 0 : a.limit;
+            const l = rem === null || rem === undefined ? 'muted' : level(rem, lim);
+            ar.className = 'ar num ' + l;
+            ar.textContent = rem === null || rem === undefined ? t('No limit') : rem <= 0 ? (D.pc_reason === 'lockdown-active' ? t('Locked') : t('Time up')) : dur(rem, true);
+            const m = row.querySelector('.meter');
+            m.className = 'meter ' + (l === 'muted' ? '' : l);
+            m.firstElementChild.style.width = (lim > 0 ? Math.min(100, ((a.used + run) / lim) * 100) : 0) + '%';
+        }
+
+        const ft = document.getElementById('ft');
+        const chips = [];
+        if (D.lockdown && D.lockdown.active) chips.push(`<span class="chip danger">${t('Lockdown active')}</span>`);
+        if (D.pending_changes) chips.push(`<span class="chip info">${t('{n} pending', { n: D.pending_changes })}</span>`);
+        chips.push(`<span>${state === 'ok' ? (D.online ? t('updated {t}', { t: ago(fetchedAt) }) : t('seen {t}', { t: D.last_seen ? ago(Date.parse(D.last_seen)) : '—' })) : t('seen {t}', { t: ago(fetchedAt) })}</span>`);
+        const html = chips.join('');
+        if (ft.innerHTML !== html) ft.innerHTML = html;
+    }
+
+    if (D) render();
+    load();
+    setInterval(() => { if (!document.hidden) load(); }, opt.refresh * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+    setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

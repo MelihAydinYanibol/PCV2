@@ -1645,7 +1645,7 @@ function goToLogin() {
     if (S.redirecting) return;
     S.redirecting = true;
     S.nlDirty = false;  // don't block the redirect with the unsaved-changes prompt
-    location.href = '/login?next=' + encodeURIComponent(location.pathname + location.hash);
+    location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search + location.hash);
 }
 
 async function signOut() {
@@ -3087,7 +3087,21 @@ setInterval(() => { if (S.data) renderActivity(model()); renderSettingsInfo(); }
     S.tab = null;
     showTab(tab, { push: false });
     try { history.replaceState({ tab: S.tab }, '', `#${S.tab}`); } catch (e) { /* ignore */ }
-    refresh().finally(() => { S.booting = false; renderConnection(); });
+    // Deep link from the widget: /?action=exception&app=chrome.exe&secs=900 opens the
+    // exception dialog prefilled (nothing is changed until it is confirmed)
+    const params = new URLSearchParams(location.search);
+    const action = params.get('action');
+    const deepApp = (params.get('app') || '').slice(0, 260) || null;
+    const deepSecs = Math.min(86400, Math.max(0, parseInt(params.get('secs'), 10) || 0)) || undefined;
+    if (location.search) {
+        try { history.replaceState({ tab: S.tab }, '', `${location.pathname}#${S.tab}`); } catch (e) { /* ignore */ }
+    }
+    refresh().finally(() => {
+        S.booting = false;
+        renderConnection();
+        if (action === 'exception') exceptionDialog(deepApp, deepSecs);
+        else if (action === 'limit' && deepApp && S.data && S.data.limits && deepApp in S.data.limits) { showTab('limits'); limitDialog(deepApp); }
+    });
     restartPolling();
 })();
 </script>
