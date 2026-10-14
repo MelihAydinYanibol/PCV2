@@ -39,10 +39,7 @@ import os
 import time
 from datetime import datetime
 
-try:
-    from win11toast import toast
-except Exception:  # pragma: no cover - toast is optional / Windows-only
-    toast = None
+from notifier import get_notifier
 
 NIGHT_LOCKDOWN_FILE = "nightlockdown.json"
 CHECK_INTERVAL = 15  # seconds between checks
@@ -172,16 +169,10 @@ def is_locked_down(config, now=None):
 
 def notify_shutdown():
     """Best-effort toast warning the user before the computer shuts down."""
-    if toast is None:
-        return
-    try:
-        toast(
-            "HASSS Agent",
-            "Gece kilidi aktif. Bilgisayar kapatılıyor.",
-            scenario="urgent",
-        )
-    except Exception as e:
-        print(f"Failed to send night lockdown notification: {e}")
+    notifier = get_notifier()
+    notifier.notify("Gece kilidi aktif. Bilgisayar kapatılıyor.", key="night-lockdown")
+    # Give the toast a moment to appear before the machine goes down.
+    notifier.flush(timeout=5)
 
 
 def shutdown():
