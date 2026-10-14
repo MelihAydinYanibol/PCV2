@@ -13,7 +13,12 @@ Notifications are delivered by a single daemon worker thread:
 * Each toast has a ``tag``; a newer toast with the same tag replaces the older
   one in Action Center instead of piling up, and if several toasts with the same
   tag are queued before the worker gets to them only the newest is shown.
-* Failures are logged once per kind and never raised to the caller.
+* Failures are logged once per kind and never raised to the caller; after
+  ``MAX_CONSECUTIVE_FAILURES`` failures in a row notifications are switched off
+  for the rest of the run so a broken backend isn't retried on every check.
+
+``safe_toast(title, body, wait=0, **kwargs)`` is kept for callers written
+against the earlier win11toast-based wrapper.
 """
 
 import base64
@@ -34,6 +39,7 @@ DEFAULT_APP_ID = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0
 DEFAULT_TITLE = "HASSS Agent"
 POWERSHELL_TIMEOUT = 15  # seconds
 MAX_PENDING = 20
+MAX_CONSECUTIVE_FAILURES = 5
 
 _CREATE_NO_WINDOW = 0x08000000
 
@@ -73,6 +79,7 @@ class Notifier:
         self._idle = threading.Event()
         self._idle.set()
         self._reported_errors = set()
+        self._consecutive_failures = 0
 
     # ------------------------------------------------------------------ public
 
@@ -91,6 +98,15 @@ class Notifier:
             self._idle.clear()
             self._ensure_worker()
             self._cond.notify()
+
+    @property
+    def available(self):
+        return self._enabled
+
+    def reset(self):
+        """Re-enable notifications after they were disabled by repeated failures."""
+        self._consecutive_failures = 0
+        self._enabled = sys.platform == "win32"
 
     def flush(self, timeout=None):
         """Wait until every queued toast has been handed to Windows."""
@@ -111,9 +127,23 @@ class Notifier:
                     self._cond.wait()
                 tag, (title, message, scenario) = self._pending.popitem(last=False)
             try:
-                self._show(tag, title, message, scenario)
+                ok = self._show(tag, title, message, scenario)
             except Exception as e:  # never let the worker die
                 self._report("unexpected", f"Toast worker error: {e}")
+                ok = False
+            self._record(ok)
+
+    def _record(self, ok):
+        if ok:
+            self._consecutive_failures = 0
+            return
+        self._consecutive_failures += 1
+        if self._enabled and self._consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            self._enabled = False
+            with self._cond:
+                self._pending.clear()
+            log.warning("Toast notifications disabled after %s failures in a row. "
+                        "Monitoring continues without them.", self._consecutive_failures)
 
     def _build_xml(self, title, message, scenario):
         scenario_attr = f' scenario="{scenario}"' if scenario else ""
@@ -142,13 +172,15 @@ class Notifier:
         except FileNotFoundError:
             self._report("missing", "powershell.exe not found; toast notifications disabled.")
             self._enabled = False
-            return
+            return False
         except subprocess.TimeoutExpired:
             self._report("timeout", "Showing a toast timed out.")
-            return
+            return False
         if result.returncode != 0:
             err = result.stderr.decode("utf-8", "replace").strip().splitlines()
             self._report(f"rc{result.returncode}", f"Toast failed: {err[-1] if err else result.returncode}")
+            return False
+        return True
 
     def _report(self, kind, msg):
         # Log the first occurrence at WARNING, repeats at DEBUG to avoid log spam.
@@ -174,3 +206,25 @@ def get_notifier():
 
 def notify(message, key=None, title=None, urgent=True):
     get_notifier().notify(message, key=key, title=title, urgent=urgent)
+
+
+def notifications_available():
+    return get_notifier().available
+
+
+def reset_notifications():
+    get_notifier().reset()
+
+
+def safe_toast(title, body, wait=0, scenario="urgent", **_ignored):
+    """Show a toast without ever letting it break the caller.
+
+    ``wait`` is how many seconds to block until the toast has been handed to
+    Windows (0 returns immediately). Returns False if notifications are
+    unavailable or the wait timed out; callers may ignore the result.
+    """
+    n = get_notifier()
+    if not n.available:
+        return False
+    n.notify(body, key=body, title=title, urgent=scenario == "urgent")
+    return n.flush(wait) if wait else True

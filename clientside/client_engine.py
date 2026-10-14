@@ -33,6 +33,8 @@ from datetime import datetime
 import psutil
 
 from notifier import get_notifier
+from shutdown_guard import (install_shutdown_survival, mark_shutdown_enforced,
+                            clear_shutdown_enforced, shutdown_recently_enforced)
 
 # ----------------------------------------------------------------- settings
 
@@ -48,7 +50,13 @@ SAFETY_SLEEP = 120   # seconds to wait after start before enforcing anything
 # Elapsed time credited for a single tick is capped so a suspended/hibernated
 # machine does not get hours of usage added when it wakes up.
 MAX_TICK_CREDIT = CHECK_INTERVAL * 3
-SHUTDOWN_RETRY_DELAY = 60
+# Shorter startup sleep when this engine already shut the computer down for the
+# overall limit recently (cancelled shutdown + restart, or the PC was turned back
+# on). The limit and exceptions are still checked first, so this never shuts
+# down by itself.
+RESUME_SAFETY_SLEEP = 20
+SHUTDOWN_SOURCE = "time_limit"
+SHUTDOWN_NOTIFY_TIMEOUT = 2  # max seconds to wait for the shutdown toast
 
 USAGE_NOTIFIERS = (30, 60, 120, 300)  # seconds remaining
 TTS_EVENTS = {30: "cc5f5e65-8d04-48bb-947f-243d9184e6cc",
@@ -68,8 +76,15 @@ log = logging.getLogger("engine")
 
 # ------------------------------------------------------------------ helpers
 
-def load_env_file(path=ENV_FILE):
-    """Minimal .env reader (KEY=VALUE lines); real environment variables win."""
+def load_env_file(path=None):
+    """Minimal .env reader (KEY=VALUE lines); real environment variables win.
+
+    Reads the .env next to this script, like api.py does, falling back to the
+    working directory.
+    """
+    if path is None:
+        here = os.path.join(os.path.dirname(os.path.abspath(__file__)), ENV_FILE)
+        path = here if os.path.exists(here) else ENV_FILE
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -435,6 +450,8 @@ class ClientEngine:
         )
         self.processes = ProcessController()
         self._active = set()  # names credited with usage on the next tick
+        self._shutdown_marked = True  # assume a stale marker may exist until cleared
+        self._shutdown_announced = False
 
     def ensure_files_exist(self):
         for store in (self.limits_store, self.usage_store, self.exception_store, self.used_store):
@@ -459,6 +476,9 @@ class ClientEngine:
             self.usage.flush()
             self.shutdown(overall_used, overall_limit)
             return
+        if self._shutdown_marked:
+            clear_shutdown_enforced(SHUTDOWN_SOURCE)
+            self._shutdown_marked = self._shutdown_announced = False
         self.remaining.check(day, OVERALL, overall_limit - overall_used)
         self._active.add(OVERALL)
 
@@ -475,19 +495,26 @@ class ClientEngine:
         self.usage.flush()
 
     def shutdown(self, used, limit):
+        """Issue a shutdown. Called on every tick while over the limit, so a
+        shutdown that was cancelled from the Windows shutdown screen is simply
+        issued again."""
         log.warning("Overall usage %s/%s s exceeded. Shutting down the computer.", used, limit)
-        self.notifier.notify("Bilgisayar kullanım süresi doldu. Bilgisayar kapatılıyor.", key="shutdown")
-        self.notifier.flush(timeout=5)
+        if not self._shutdown_announced:
+            self._shutdown_announced = True
+            self.notifier.notify("Bilgisayar kullanım süresi doldu. Bilgisayar kapatılıyor.", key="shutdown")
+            self.notifier.flush(timeout=SHUTDOWN_NOTIFY_TIMEOUT)
+        mark_shutdown_enforced(SHUTDOWN_SOURCE)
+        self._shutdown_marked = True
         try:
             subprocess.run(["shutdown", "/s", "/t", "0", "/f"], check=True,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except (OSError, subprocess.CalledProcessError) as e:
             log.error("Shutdown command failed: %s", e)
-        # Give Windows time to act; if it did not, the next tick tries again.
-        time.sleep(SHUTDOWN_RETRY_DELAY)
 
-    def run(self, safety_sleep=SAFETY_SLEEP):
+    def run(self, safety_sleep=None):
         self.ensure_files_exist()
+        if safety_sleep is None:
+            safety_sleep = RESUME_SAFETY_SLEEP if shutdown_recently_enforced(SHUTDOWN_SOURCE) else SAFETY_SLEEP
         log.info("Engine started -- waiting %s seconds for security.", safety_sleep)
         time.sleep(safety_sleep)
         log.info("Monitoring started.")
@@ -521,6 +548,7 @@ def setup_logging():
 
 if __name__ == "__main__":
     setup_logging()
+    install_shutdown_survival("client_engine")
     try:
         ClientEngine().run()
     except KeyboardInterrupt:

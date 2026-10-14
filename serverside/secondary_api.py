@@ -3,7 +3,7 @@ Secondary Server API - Buffering Proxy
 Receives requests and forwards to primary API, queues if unavailable
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
 import json
 import os
@@ -21,7 +21,8 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Load environment variables from .env if present
+# Load environment variables from .env if present (serverside/.env first, then cwd)
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 load_dotenv()
 
 # Enable gzip compression
@@ -64,6 +65,10 @@ log.setLevel(logging.ERROR) """
 
 # Configuration
 PRIMARY_API_URL = os.getenv('PRIMARY_API_URL', 'http://localhost:5000/api')
+# Shared secret the primary API requires as "Authorization: Bearer <token>"
+PRIMARY_API_TOKEN = os.getenv('PRIMARY_API_TOKEN') or None
+if PRIMARY_API_TOKEN:
+    PRIMARY_API_SESSION.headers['Authorization'] = f'Bearer {PRIMARY_API_TOKEN}'
 QUEUE_DB = 'request_queue.db'
 SYNC_INTERVAL = 10  # seconds
 REQUEST_TIMEOUT = 4.0  # seconds for data requests
@@ -240,6 +245,22 @@ def get_cached_endpoint_data(endpoint: str, allow_expired: bool = False):
         print(f"[ERROR] Failed to get cached data: {e}")
         return None
 
+def get_cached_at(endpoint: str):
+    """Return when an endpoint was last cached, as an ISO-8601 UTC string (or None)."""
+    try:
+        conn = sqlite3.connect(QUEUE_DB, timeout=10)
+        c = conn.cursor()
+        c.execute('SELECT cached_at FROM data_cache WHERE endpoint = ?', (endpoint,))
+        row = c.fetchone()
+        conn.close()
+        if row and row[0]:
+            # SQLite CURRENT_TIMESTAMP is UTC 'YYYY-MM-DD HH:MM:SS'
+            return str(row[0]).replace(' ', 'T') + 'Z'
+        return None
+    except sqlite3.OperationalError as e:
+        print(f"[ERROR] Failed to get cache time: {e}")
+        return None
+
 # ============================================================================
 # PRIMARY API COMMUNICATION
 # ============================================================================
@@ -276,6 +297,9 @@ def check_primary_alive():
             else:
                 # Log non-200 for diagnosis
                 print(f"[CHECK] Probe to {url} returned status {response.status_code}")
+                if response.status_code == 401:
+                    print("[CHECK] Primary API rejected the token: PRIMARY_API_TOKEN must match in clientside/.env and serverside/.env")
+                    break
         except requests.exceptions.RequestException as e:
             last_exception = e
             # Keep trying other probe urls
@@ -306,6 +330,13 @@ def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
         else:
             return False, {'status': 'error', 'message': 'Unsupported method'}, 400
         
+        # A 401 means our token is wrong, not that the user's request was bad.
+        # Report it as a gateway error so the dashboard doesn't treat it as
+        # its own sign-in expiring.
+        if response.status_code == 401:
+            print("[ERROR] Primary API rejected the token: PRIMARY_API_TOKEN must match in clientside/.env and serverside/.env")
+            return False, {'status': 'error', 'message': 'Primary API rejected the server token (check PRIMARY_API_TOKEN)'}, 502
+
         # Check if response is successful
         if response.status_code >= 400:
             print(f"[ERROR] Primary API returned {response.status_code}")
@@ -323,24 +354,11 @@ def forward_to_primary(method: str, endpoint: str, data: Dict = None) -> tuple:
         return False, None, None
 
 # ============================================================================
-# CORS HEADERS
+# CORS
 # ============================================================================
-
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({"status": "ok"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-        return response, 200
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
-    return response
+# No CORS headers on purpose: the dashboard is served from this server (same
+# origin) and requests need a sign-in cookie, so other websites must not be
+# able to call this API from a visitor's browser. See auth.py.
 
 # ============================================================================
 # PROXY ENDPOINTS - These mirror the primary API
@@ -519,6 +537,7 @@ def get_dashboard_data():
         'limits': '/limits',
         'status': '/status',
         'today_exceptions': f'/exceptions/{today}',
+        'today_usage': f'/usage/{today}',
         'config': '/config',
         'night_lockdown': '/nightlockdown',
     }
@@ -543,6 +562,7 @@ def get_dashboard_data():
 
     results = {}
     any_primary_success = False
+    cached_keys = []
     with ThreadPoolExecutor(max_workers=len(endpoint_map)) as executor:
         futures = {executor.submit(fetch_one, k, ep): k for k, ep in endpoint_map.items()}
         for future in as_completed(futures):
@@ -550,6 +570,8 @@ def get_dashboard_data():
             results[key] = data
             if succeeded:
                 any_primary_success = True
+            else:
+                cached_keys.append(key)
 
     # Only update the primary-alive cache when primary was actually confirmed
     # reachable.  If every fetch_one call returned from the offline cache
@@ -559,16 +581,39 @@ def get_dashboard_data():
     if any_primary_success:
         _update_primary_status(True)
 
+    # When serving from cache, tell the dashboard how old the data is so it
+    # can show "last seen" information while the kid's computer is off.
+    cache_times = [t for t in (get_cached_at(endpoint_map[k]) for k in cached_keys) if t]
+
+    queue_items = []
+    for item_id, method, endpoint, data in get_queue():
+        queue_items.append({
+            "id": item_id,
+            "method": method,
+            "endpoint": endpoint,
+            "data": json.loads(data) if data else None
+        })
+
     results['server'] = {
         'primary_api': 'online' if any_primary_success else 'offline',
         'timestamp': datetime.now().isoformat(),
+        'server_date': today,
+        'cached_keys': cached_keys,
+        'last_synced': min(cache_times) if cache_times else None,
     }
+    results['queue'] = queue_items
 
     return jsonify({"status": "success", "data": results}), 200
 
 # ============================================================================
 # SERVER-SPECIFIC ENDPOINTS
 # ============================================================================
+
+@app.route("/", methods=["GET"])
+@app.route("/dashboard", methods=["GET"])
+def serve_dashboard():
+    """Serve the web dashboard from the same origin as the API."""
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'dashboard.html')
 
 @app.route("/api/server/status", methods=["GET"])
 def server_status():
@@ -764,18 +809,25 @@ if __name__ == "__main__":
     print("PARENTAL CONTROL - SECONDARY SERVER API")
     print("=" * 70)
     print(f"Primary API: {PRIMARY_API_URL}")
+    if not PRIMARY_API_TOKEN:
+        print("WARNING: PRIMARY_API_TOKEN is not set; the primary API will reject requests unless it runs with PRIMARY_API_AUTH_DISABLED=true")
     print(f"Queue Database: {QUEUE_DB}")
     print(f"Sync Interval: {SYNC_INTERVAL} seconds")
     print("=" * 70)
     
     # Initialize database
     init_db()
+
+    # Password sign-in for the dashboard and API (password from serverside/.env)
+    from auth import init_auth
+    init_auth(app, QUEUE_DB)
     
     # Start background sync worker
     worker_thread = threading.Thread(target=background_sync_worker, daemon=True)
     worker_thread.start()
     
     print("\nServer Endpoints:")
+    print("  Dashboard: GET /  (sign in at /login)")
     print("  Proxy: All endpoints from primary API at /api/*")
     print("  Batch: GET /api/dashboard/data")
     print("  Server Status: GET /api/server/status")
