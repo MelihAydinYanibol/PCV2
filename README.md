@@ -447,19 +447,23 @@ Modify notification times in `client_engine.py`:
 USAGE_NOTIFIERS = [30, 60, 120, 300]  # seconds before limit
 ```
 
-All toasts go through `notifier.safe_toast()` in `clientside/notifier.py`, which
-never raises and never blocks the monitoring loop:
+All toasts go through `clientside/notifier.py`, which needs no extra packages
+and never raises or blocks the monitoring loop:
 
-- If `win11toast` is not installed or cannot be imported (e.g. non-Windows), the
-  engines log a single warning and run without notifications.
-- Each toast is dispatched on a daemon thread, so a hanging Windows notification
-  stack cannot freeze time tracking or enforcement.
+- Toasts are shown by the built-in Windows PowerShell in a separate process, so
+  a hanging Windows notification stack cannot freeze time tracking or
+  enforcement, and no WinRT bindings are loaded into the engines.
+- A single background thread delivers them. A newer toast about the same app
+  replaces the older one instead of piling up in Action Center.
+- On non-Windows systems, or if `powershell.exe` is missing, the engines run
+  without notifications.
 - After 5 consecutive failures notifications are disabled for the rest of the
   run instead of being retried on every check (`MAX_CONSECUTIVE_FAILURES`).
+- Set `TOAST_APP_ID` to show toasts under a different registered app identity.
 
 ```python
 MAX_CONSECUTIVE_FAILURES = 5  # failures before toasts are given up on
-MAX_OUTSTANDING = 3           # pending toasts before the backend is deemed stuck
+POWERSHELL_TIMEOUT = 15       # seconds before a single toast is abandoned
 ```
 
 ## 🐛 Troubleshooting
@@ -513,10 +517,9 @@ engines off:
 ### Clientside
 - Flask 3.1.3 - Web framework for REST API
 - psutil 7.2.1 - System and process utilities
-- requests 2.32.5 - HTTP library
-- win11toast 0.36.3 - Windows toast notifications (optional; the engines run without it)
-- pywin32 311 - Windows API access
-- python-dotenv 1.2.1 - Environment variable management
+- python-dotenv 1.2.2 - Loads `.env` for the primary API
+
+Toast notifications and Home Assistant calls use only the Python standard library.
 
 ### Serverside
 - Flask 3.1.3 - Web framework

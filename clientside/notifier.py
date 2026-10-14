@@ -1,146 +1,230 @@
-"""Failsafe wrapper around the optional Windows toast notification backend.
+"""
+Dependency-free Windows toast notifications.
 
-Toast notifications are a convenience, never a requirement: they go through
-the Windows WinRT stack, which can be missing (running on a non-Windows box,
-``win11toast`` not installed), broken (notifications disabled by policy,
-corrupted registration) or simply hang for a long time.  None of that should
-ever stop the parental control engines from tracking usage and enforcing
-limits, so every toast is sent through :func:`safe_toast`, which
+Toasts are shown by handing a small script to the built-in Windows PowerShell
+(5.1), which talks to the WinRT ``ToastNotificationManager``.  Doing the work
+out of process keeps the engine light: no WinRT/asyncio bindings are loaded into
+the long-running Python process, and a hung or crashing notification can never
+stall the monitoring loop.
 
-* never raises - any backend failure is caught and printed,
-* never blocks the caller by default - the toast is dispatched on a daemon
-  thread so a hanging WinRT call cannot freeze the monitoring loop,
-* gives up gracefully - after ``MAX_CONSECUTIVE_FAILURES`` failed toasts in a
-  row notifications are disabled for the rest of the run instead of retrying
-  (and possibly hanging) on every single check.
+Notifications are delivered by a single daemon worker thread:
+
+* ``Notifier.notify`` never blocks the caller.
+* Each toast has a ``tag``; a newer toast with the same tag replaces the older
+  one in Action Center instead of piling up, and if several toasts with the same
+  tag are queued before the worker gets to them only the newest is shown.
+* Failures are logged once per kind and never raised to the caller; after
+  ``MAX_CONSECUTIVE_FAILURES`` failures in a row notifications are switched off
+  for the rest of the run so a broken backend isn't retried on every check.
+
+``safe_toast(title, body, wait=0, **kwargs)`` is kept for callers written
+against the earlier win11toast-based wrapper.
 """
 
+import base64
+import logging
+import os
+import subprocess
 import sys
 import threading
+import zlib
+from collections import OrderedDict
+from xml.sax.saxutils import escape
 
-# Stop trying to notify after this many failures in a row.
+log = logging.getLogger("notifier")
+
+# AppUserModelID of Windows PowerShell. It is registered on every Windows
+# install, so toasts show up without having to register our own app identity.
+DEFAULT_APP_ID = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe"
+DEFAULT_TITLE = "HASSS Agent"
+POWERSHELL_TIMEOUT = 15  # seconds
+MAX_PENDING = 20
 MAX_CONSECUTIVE_FAILURES = 5
-# How many dispatched-but-unfinished toasts we tolerate before assuming the
-# backend is hung and treating further attempts as failures.
-MAX_OUTSTANDING = 3
 
-try:
-    from win11toast import toast as _toast
-    _IMPORT_ERROR = None
-except Exception as e:  # pragma: no cover - depends on platform / install
-    _toast = None
-    _IMPORT_ERROR = e
+_CREATE_NO_WINDOW = 0x08000000
 
-_lock = threading.Lock()
-_consecutive_failures = 0
-_outstanding = 0
-_disabled = _toast is None
-_warned_unavailable = False
+_PS_TEMPLATE = r"""
+$ErrorActionPreference = 'Stop'
+[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+[void][Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
+$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+$xml.LoadXml(@'
+{xml}
+'@)
+$toast = New-Object Windows.UI.Notifications.ToastNotification $xml
+$toast.Tag = '{tag}'
+$toast.Group = 'pcv2'
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{app_id}').Show($toast)
+"""
 
 
-def _log(message):
-    """Print in a single write so toast-thread logs don't split caller logs."""
-    try:
-        sys.stdout.write(f"{message}\n")
-    except Exception:
-        pass
+def _ps_quote(value):
+    """Escape a value for use inside a single-quoted PowerShell string."""
+    return value.replace("'", "''")
+
+
+def _make_tag(key):
+    """Toast tags are limited to 64 chars; derive a short stable tag from any key."""
+    return f"t{zlib.crc32(key.encode('utf-8')):08x}"
+
+
+class Notifier:
+    def __init__(self, app_id=None, title=DEFAULT_TITLE):
+        self.app_id = app_id or os.getenv("TOAST_APP_ID") or DEFAULT_APP_ID
+        self.title = title
+        self._enabled = sys.platform == "win32"
+        self._pending = OrderedDict()  # tag -> (title, message, scenario)
+        self._cond = threading.Condition()
+        self._worker = None
+        self._idle = threading.Event()
+        self._idle.set()
+        self._reported_errors = set()
+        self._consecutive_failures = 0
+
+    # ------------------------------------------------------------------ public
+
+    def notify(self, message, key=None, title=None, urgent=True):
+        """Queue a toast. Never blocks and never raises."""
+        log.info("Notify: %s", message)
+        if not self._enabled:
+            return
+        tag = _make_tag(key or message)
+        with self._cond:
+            # Coalesce: drop an older pending toast with the same tag.
+            self._pending.pop(tag, None)
+            while len(self._pending) >= MAX_PENDING:
+                self._pending.popitem(last=False)
+            self._pending[tag] = (title or self.title, message, "urgent" if urgent else None)
+            self._idle.clear()
+            self._ensure_worker()
+            self._cond.notify()
+
+    @property
+    def available(self):
+        return self._enabled
+
+    def reset(self):
+        """Re-enable notifications after they were disabled by repeated failures."""
+        self._consecutive_failures = 0
+        self._enabled = sys.platform == "win32"
+
+    def flush(self, timeout=None):
+        """Wait until every queued toast has been handed to Windows."""
+        return self._idle.wait(timeout)
+
+    # ----------------------------------------------------------------- private
+
+    def _ensure_worker(self):
+        if self._worker is None or not self._worker.is_alive():
+            self._worker = threading.Thread(target=self._run, name="toast-worker", daemon=True)
+            self._worker.start()
+
+    def _run(self):
+        while True:
+            with self._cond:
+                while not self._pending:
+                    self._idle.set()
+                    self._cond.wait()
+                tag, (title, message, scenario) = self._pending.popitem(last=False)
+            try:
+                ok = self._show(tag, title, message, scenario)
+            except Exception as e:  # never let the worker die
+                self._report("unexpected", f"Toast worker error: {e}")
+                ok = False
+            self._record(ok)
+
+    def _record(self, ok):
+        if ok:
+            self._consecutive_failures = 0
+            return
+        self._consecutive_failures += 1
+        if self._enabled and self._consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            self._enabled = False
+            with self._cond:
+                self._pending.clear()
+            log.warning("Toast notifications disabled after %s failures in a row. "
+                        "Monitoring continues without them.", self._consecutive_failures)
+
+    def _build_xml(self, title, message, scenario):
+        scenario_attr = f' scenario="{scenario}"' if scenario else ""
+        return (
+            f"<toast{scenario_attr}><visual><binding template=\"ToastGeneric\">"
+            f"<text>{escape(title)}</text><text>{escape(message)}</text>"
+            f"</binding></visual></toast>"
+        )
+
+    def _show(self, tag, title, message, scenario):
+        # escape() handles &, <, >; apostrophes are escaped too so the XML can
+        # never terminate the PowerShell here-string early.
+        xml = self._build_xml(title, message, scenario).replace("'", "&apos;")
+        script = _PS_TEMPLATE.format(xml=xml, tag=_ps_quote(tag), app_id=_ps_quote(self.app_id))
+        encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+        try:
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                 "-EncodedCommand", encoded],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=POWERSHELL_TIMEOUT,
+                creationflags=_CREATE_NO_WINDOW,
+            )
+        except FileNotFoundError:
+            self._report("missing", "powershell.exe not found; toast notifications disabled.")
+            self._enabled = False
+            return False
+        except subprocess.TimeoutExpired:
+            self._report("timeout", "Showing a toast timed out.")
+            return False
+        if result.returncode != 0:
+            err = result.stderr.decode("utf-8", "replace").strip().splitlines()
+            self._report(f"rc{result.returncode}", f"Toast failed: {err[-1] if err else result.returncode}")
+            return False
+        return True
+
+    def _report(self, kind, msg):
+        # Log the first occurrence at WARNING, repeats at DEBUG to avoid log spam.
+        if kind in self._reported_errors:
+            log.debug(msg)
+        else:
+            self._reported_errors.add(kind)
+            log.warning(msg)
+
+
+_default = None
+_default_lock = threading.Lock()
+
+
+def get_notifier():
+    """Process-wide shared notifier."""
+    global _default
+    with _default_lock:
+        if _default is None:
+            _default = Notifier()
+        return _default
+
+
+def notify(message, key=None, title=None, urgent=True):
+    get_notifier().notify(message, key=key, title=title, urgent=urgent)
 
 
 def notifications_available():
-    """True while toasts are still being attempted."""
-    with _lock:
-        return not _disabled
+    return get_notifier().available
 
 
 def reset_notifications():
-    """Re-enable notifications after they were disabled by repeated failures."""
-    global _consecutive_failures, _disabled
-    with _lock:
-        _consecutive_failures = 0
-        _disabled = _toast is None
+    get_notifier().reset()
 
 
-def _record_success():
-    global _consecutive_failures
-    with _lock:
-        _consecutive_failures = 0
-
-
-def _record_failure(reason):
-    global _consecutive_failures, _disabled
-    with _lock:
-        _consecutive_failures += 1
-        failures = _consecutive_failures
-        just_disabled = failures >= MAX_CONSECUTIVE_FAILURES and not _disabled
-        if just_disabled:
-            _disabled = True
-    _log(f"Failed to send notification ({failures}/{MAX_CONSECUTIVE_FAILURES}): {reason}")
-    if just_disabled:
-        _log("Toast notifications disabled after repeated failures. "
-             "Monitoring continues without them.")
-
-
-def safe_toast(title, body, wait=0, **kwargs):
+def safe_toast(title, body, wait=0, scenario="urgent", **_ignored):
     """Show a toast without ever letting it break the caller.
 
-    ``wait`` is the number of seconds to block waiting for the toast to be
-    handed to Windows; 0 (the default) dispatches it and returns immediately.
-    Pass a small value when the toast must have a chance to appear before the
-    caller does something drastic, such as shutting the computer down.
-
-    Returns True when the toast was dispatched (and, when ``wait`` is set,
-    completed within that time), False when it was skipped or failed.  The
-    return value is informational - callers may ignore it.
+    ``wait`` is how many seconds to block until the toast has been handed to
+    Windows (0 returns immediately). Returns False if notifications are
+    unavailable or the wait timed out; callers may ignore the result.
     """
-    global _outstanding, _warned_unavailable
-
-    with _lock:
-        if _disabled:
-            if _toast is None and not _warned_unavailable:
-                _warned_unavailable = True
-                _log(f"Toast notifications unavailable, continuing without them: {_IMPORT_ERROR}")
-            return False
-        if _outstanding >= MAX_OUTSTANDING:
-            hung = _outstanding
-        else:
-            hung = 0
-            _outstanding += 1
-
-    if hung:
-        _record_failure(f"{hung} earlier notifications still pending, backend looks stuck")
+    n = get_notifier()
+    if not n.available:
         return False
-
-    done = threading.Event()
-    result = {}
-
-    def worker():
-        global _outstanding
-        try:
-            _toast(title, body, **kwargs)
-            result["ok"] = True
-        except BaseException as e:  # keep a broken backend inside this thread
-            result["error"] = e
-        finally:
-            with _lock:
-                _outstanding -= 1
-            done.set()
-            if "error" in result:
-                _record_failure(result["error"])
-            elif result.get("ok"):
-                _record_success()
-
-    try:
-        threading.Thread(target=worker, name="toast-notifier", daemon=True).start()
-    except Exception as e:
-        with _lock:
-            _outstanding -= 1
-        _record_failure(f"could not start notification thread: {e}")
-        return False
-
-    if wait:
-        if not done.wait(wait):
-            # The toast may still show up later; we just stop waiting for it.
-            _log(f"Notification still pending after {wait}s, continuing.")
-            return False
-        return bool(result.get("ok"))
-    return True
+    n.notify(body, key=body, title=title, urgent=scenario == "urgent")
+    return n.flush(wait) if wait else True
